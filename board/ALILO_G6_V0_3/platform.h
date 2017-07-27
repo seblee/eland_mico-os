@@ -156,12 +156,12 @@ typedef struct
   const mico_i2c_pinmap_t *i2c_pinmap;
 } platform_peripherals_pinmap_t;
 
-#define STDIO_UART MICO_UART_2
+#define STDIO_UART MICO_UART_NONE //MICO_UART_2
 #define STDIO_UART_BAUDRATE (115200)
 
 #define UART_FOR_APP MICO_UART_1
 #define MFG_TEST MICO_UART_1
-#define CLI_UART MICO_UART_2
+#define CLI_UART MICO_UART_NONE //MICO_UART_2
 
 /* I/O connection <-> Peripheral Connections */
 #define BOOT_SEL MICO_GPIO_NONE
