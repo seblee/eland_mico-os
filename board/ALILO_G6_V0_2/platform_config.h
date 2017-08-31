@@ -27,12 +27,13 @@
 *  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR 
 *  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************
-*/
+*/ 
 
 #pragma once
 
 #ifndef __PLATFORM_COMMON_CONFIG_H__
 #define __PLATFORM_COMMON_CONFIG_H__
+
 
 /******************************************************
 *                      Macros
@@ -42,12 +43,12 @@
 *                    Constants
 ******************************************************/
 
-#define HARDWARE_REVISION "3080B"
-#define DEFAULT_NAME "EMW3080B Module"
-#define MODEL "EMW3080B"
+#define HARDWARE_REVISION   "V2"
+#define DEFAULT_NAME        "AI_ROBOT"
+#define MODEL               "EMW3080B"
 
 /* MICO RTOS tick rate in Hz */
-#define MICO_DEFAULT_TICK_RATE_HZ (1000)
+#define MICO_DEFAULT_TICK_RATE_HZ                   (1000) 
 /************************************************************************
  * Uncomment to disable watchdog. For debugging only */
 #define MICO_DISABLE_WATCHDOG
@@ -66,19 +67,19 @@
 
 /************************************************************************
  * Restore default and start easylink after press down EasyLink button for 3 seconds. */
-#define RestoreDefault_TimeOut (3000)
+#define RestoreDefault_TimeOut                      (3000)
 
 /************************************************************************
  * CPU clock */
-#define MCU_CLOCK_HZ (100000000)
+#define MCU_CLOCK_HZ            (100000000)
 
 /************************************************************************
  * How many bits are used in NVIC priority configuration */
-#define CORTEX_NVIC_PRIO_BITS (4)
+#define CORTEX_NVIC_PRIO_BITS   (4)
 
 /************************************************************************
  * Enable write protection to write-disabled embedded flash sectors */
-//#define MCU_EBANLE_FLASH_PROTECT
+//#define MCU_EBANLE_FLASH_PROTECT 
 
 /************************************************************************
  * Platform provide OTA temporary partition as secondary application partition */
@@ -104,3 +105,4 @@
 *               Function Declarations
 ******************************************************/
 #endif
+

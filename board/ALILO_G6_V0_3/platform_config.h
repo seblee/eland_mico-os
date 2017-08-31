@@ -42,8 +42,8 @@
 *                    Constants
 ******************************************************/
 
-#define HARDWARE_REVISION "3080B"
-#define DEFAULT_NAME "EMW3080B Module"
+#define HARDWARE_REVISION "V03"
+#define DEFAULT_NAME "ALILO_G6"
 #define MODEL "EMW3080B"
 
 /* MICO RTOS tick rate in Hz */

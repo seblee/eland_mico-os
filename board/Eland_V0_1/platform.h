@@ -31,6 +31,9 @@
 
 #pragma once
 
+#ifndef __PLATFORM_H_
+#define __PLATFORM_H_
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -163,15 +166,12 @@ typedef struct
 #define MFG_TEST MICO_UART_1
 #define CLI_UART MICO_UART_2
 
-/* Components connected to external I/Os*/
-#define Standby_SEL (MICO_GPIO_29)
-
 /* I/O connection <-> Peripheral Connections */
-#define BOOT_SEL MICO_GPIO_19
+#define BOOT_SEL MICO_GPIO_NONE
 #define MFG_SEL MICO_GPIO_NONE
 #define MICO_RF_LED MICO_GPIO_NONE
-#define MICO_SYS_LED MICO_GPIO_19
-#define EasyLink_BUTTON MICO_GPIO_23
+#define MICO_SYS_LED MICO_GPIO_NONE
+#define EasyLink_BUTTON MICO_GPIO_NONE
 
 #define MICO_GPIO_NC 0xFF
 
@@ -182,43 +182,31 @@ typedef struct
   int dhcp_arp_check;
 } mico_system_config_t;
 
-/* Arduino extention connector */
-#define Arduino_RXD (MICO_GPIO_23)
-#define Arduino_TXD (MICO_GPIO_18)
-#define Arduino_D2 (MICO_GPIO_NONE)
-#define Arduino_D3 (MICO_GPIO_NONE)
-#define Arduino_D4 (MICO_GPIO_NONE)
-#define Arduino_D5 (MICO_GPIO_NONE)
-#define Arduino_D6 (MICO_GPIO_NONE)
-#define Arduino_D7 (MICO_GPIO_NONE)
-
-#define Arduino_D8 (MICO_GPIO_NONE)
-#define Arduino_D9 (MICO_GPIO_NONE)
-#define Arduino_CS (MICO_GPIO_8)
-#define Arduino_SI (MICO_GPIO_9)
-#define Arduino_SO (MICO_GPIO_7)
-#define Arduino_SCK (MICO_GPIO_10)
-#define Arduino_SDA (MICO_GPIO_8)
-#define Arduino_SCL (MICO_GPIO_7)
-
-#define Arduino_A0 (MICO_ADC_NONE)
-#define Arduino_A1 (MICO_ADC_NONE)
-#define Arduino_A2 (MICO_ADC_NONE)
-#define Arduino_A3 (MICO_ADC_NONE)
-#define Arduino_A4 (MICO_ADC_NONE)
-#define Arduino_A5 (MICO_ADC_NONE)
-
-#define Arduino_I2C (MICO_I2C_1)
-#define Arduino_SPI (MICO_SPI_1)
-#define Arduino_UART (MICO_UART_1)
-
-#ifdef USE_MiCOKit_EXT
-#define MICO_I2C_CP (Arduino_I2C)
-#include "micokit_ext_def.h"
-#else
 #define MICO_I2C_CP (MICO_I2C_NONE)
-#endif //USE_MiCOKit_EXT
+
+#define MICO_AUDIO_AI_ROBOT
+
+#ifdef MICO_AUDIO_AI_ROBOT
+// SPI flow control pin
+#define MICO_AUDIO_AIROBOT_SPI_FLOW_CTRL MICO_GPIO_19
+#define MICO_AUDIO_AIROBOT_SPI_CHIP_SELECT MICO_GPIO_8
+#define MICO_AUDIO_AIROBOT_SPI MICO_SPI_1
+
+#define MICO_AUDIO_AIROBOT_SPI_MISO MICO_GPIO_7
+#define MICO_AUDIO_AIROBOT_SPI_CS MICO_GPIO_8
+#define MICO_AUDIO_AIROBOT_SPI_MOSI MICO_GPIO_9
+#define MICO_AUDIO_AIROBOT_SPI_CLK MICO_GPIO_10
+// LED
+#define MICO_AUDIO_AIROBOT_LED_RGB MICO_GPIO_22
+#define MICO_AUDIO_AIROBOT_LED_WORK MICO_GPIO_12
+
+//IO
+#define MICO_AUDIO_AIROBOT_IO_NOTIFY MICO_GPIO_13
+#define MICO_AUDIO_AIROBOT_IO_WAKE_UP MICO_GPIO_14
+#define MICO_AUDIO_AIROBOT_IO_AP_POWER MICO_GPIO_23
+#endif
 
 #ifdef __cplusplus
 } /*extern "C" */
+#endif
 #endif
