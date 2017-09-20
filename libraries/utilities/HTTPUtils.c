@@ -318,21 +318,28 @@ OSStatus SocketReadHTTPBody(int inSock, HTTPHeader_t *inHeader)
 
     /* We has extra data but total length is not clear, store them to 1500 bytes buffer 
      return when connection is disconnected by remote server */
-    // if( inHeader->dataEndedbyClose == true){
-    //   if(inHeader->contentLength == 0) { //First read body, return using data received by SocketReadHTTPHeader
-    //     inHeader->contentLength = inHeader->extraDataLen;
-    //   }else{
-    //     selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-    //     require_action( selectResult >= 1, exit, err = kNotReadableErr );
+    // if (inHeader->dataEndedbyClose == true)
+    // {
+    //     if (inHeader->contentLength == 0)
+    //     { //First read body, return using data received by SocketReadHTTPHeader
+    //         inHeader->contentLength = inHeader->extraDataLen;
+    //     }
+    //     else
+    //     {
+    //         selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+    //         require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
-    //     readResult = read( inSock,
-    //                       (uint8_t*)( inHeader->extraDataPtr ),
-    //                       1500 );
-    //     if( readResult  > 0 ) inHeader->contentLength = readResult;
-    //     else { err = kConnectionErr; goto exit; }
-    //   }
-    //   err = kNoErr;
-    //   goto exit;
+    //         readResult = read(inSock, (uint8_t *)(inHeader->extraDataPtr), 1500);
+    //         if (readResult > 0)
+    //             inHeader->contentLength = readResult;
+    //         else
+    //         {
+    //             err = kConnectionErr;
+    //             goto exit;
+    //         }
+    //     }
+    //     err = kNoErr;
+    //     goto exit;
     // }
 
     while (inHeader->extraDataLen < inHeader->contentLength)
@@ -412,10 +419,11 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
             /* Find Chunk data length */
             while (findChunkedDataLength(inHeader->chunkedDataBufferPtr, inHeader->extraDataLen, &inHeader->extraDataPtr, "%llu", &inHeader->contentLength) == false)
             {
+                http_utils_log("HTTPHeaderParse----1----");
                 require_action(inHeader->extraDataLen < inHeader->chunkedDataBufferLen, exit, err = kMalformedErr);
 
-                selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
-                require_action(selectResult >= 1, exit, err = kNotReadableErr);
+                //selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                //require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
                 readResult = ssl_recv(ssl, inHeader->chunkedDataBufferPtr + inHeader->extraDataLen, (size_t)(inHeader->chunkedDataBufferLen - inHeader->extraDataLen));
 
@@ -427,9 +435,7 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                     goto exit;
                 }
             }
-
             chunckheaderLen = inHeader->extraDataPtr - inHeader->chunkedDataBufferPtr;
-
             /* Check the last chunk */
             if (inHeader->contentLength == 0)
             {
@@ -481,7 +487,6 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                 /* Callback , read LF */
                 else if (inHeader->extraDataLen == inHeader->contentLength + chunckheaderLen + 1)
                 { //recv CR
-
                     require_action(*(inHeader->chunkedDataBufferPtr + inHeader->extraDataLen - 1) == '\r',
                                    exit, err = kMalformedErr);
 
@@ -509,17 +514,19 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                 }
                 else
                 {
+                    http_utils_log("HTTPHeaderParse----1----");
                     /* Callback , read , callback , read CRLF */
                     (inHeader->onReceivedDataCallback)(inHeader, pos,
                                                        (uint8_t *)inHeader->extraDataPtr,
                                                        inHeader->extraDataLen - chunckheaderLen,
                                                        inHeader->userContext);
                     pos += inHeader->extraDataLen - chunckheaderLen;
-
                     while (inHeader->extraDataLen < inHeader->contentLength + chunckheaderLen)
                     {
-                        selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
-                        require_action(selectResult >= 1, exit, err = kNotReadableErr);
+                        // http_utils_log("inSock = %d ----2----", inSock);
+                        // selectResult = select(inSock + 2, &readSet, NULL, NULL, NULL);
+                        // require_action(selectResult >= 1, exit, err = kNotReadableErr);
+                        // http_utils_log("selectResult = %d----3----", selectResult);
 
                         if (inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen) > inHeader->chunkedDataBufferLen - chunckheaderLen)
                             //Data needed is greater than valid buffer size
@@ -529,6 +536,7 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                             readLength = inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen);
 
                         readResult = ssl_recv(ssl, (uint8_t *)inHeader->extraDataPtr, readLength);
+                        http_utils_log("HTTPHeaderParse----4----");
 
                         if (readResult > 0)
                             inHeader->extraDataLen += readResult;
@@ -545,8 +553,8 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                         pos += readResult;
                     }
 
-                    selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
-                    require_action(selectResult >= 1, exit, err = kNotReadableErr);
+                    // selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                    // require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
                     readResult = ssl_recv(ssl, (uint8_t *)inHeader->extraDataPtr, 2);
 
@@ -705,14 +713,14 @@ int SocketReadHTTPSHeader(mico_ssl_t ssl, HTTPHeader_t *inHeader)
         }
         err = kNoErr;
     } /* Extra data without content length, data is ended by conntection close */
-    // else if(inHeader->extraDataLen != 0){ //Content length =0, but extra data length >0, create a memory buffer (1500)and store extra data
-    //   inHeader->dataEndedbyClose = true;
-    //   inHeader->extraDataPtr = calloc(1500, sizeof(uint8_t));
-    //   require_action(inHeader->extraDataPtr, exit, err = kNoMemoryErr);
-    //   memcpy((uint8_t *)inHeader->extraDataPtr, end, inHeader->extraDataLen);
-    //   (inHeader->onReceivedDataCallback)(inHeader, 0, (uint8_t *)inHeader->extraDataPtr, inHeader->extraDataLen, inHeader->userContext);
-
-    //   err = kNoErr;
+    // else if (inHeader->extraDataLen != 0)
+    // { //Content length =0, but extra data length >0, create a memory buffer (1500)and store extra data
+    //     inHeader->dataEndedbyClose = true;
+    //     inHeader->extraDataPtr = calloc(1500, sizeof(uint8_t));
+    //     require_action(inHeader->extraDataPtr, exit, err = kNoMemoryErr);
+    //     memcpy((uint8_t *)inHeader->extraDataPtr, end, inHeader->extraDataLen);
+    //     (inHeader->onReceivedDataCallback)(inHeader, 0, (uint8_t *)inHeader->extraDataPtr, inHeader->extraDataLen, inHeader->userContext);
+    //     err = kNoErr;
     // }
     else
         return kNoErr;
@@ -811,14 +819,12 @@ OSStatus HTTPHeaderParse(HTTPHeader_t *ioHeader)
         usrc = (const uint8_t *)src;
         ioHeader->channelID = usrc[1];
         ioHeader->contentLength = (usrc[2] << 8) | usrc[3];
-
         ioHeader->methodPtr = src;
         ioHeader->methodLen = 1;
 
         err = kNoErr;
         goto exit;
     }
-
     // Parse the start line. This will also determine if it's a request or response.
     // Requests are in the format <method> <url> <protocol>/<majorVersion>.<minorVersion>, for example:
     //
@@ -1415,8 +1421,8 @@ void PrintHTTPHeader(HTTPHeader_t *inHeader)
 {
     char temp[20];
     //(void)inHeader; // Fix warning when debug=0
-    http_utils_log("Header:\n %s", inHeader->buf);
-    http_utils_log("Length: %d", (int)inHeader->len);
+    //http_utils_log("Header: \r\n%s", inHeader->buf);
+    //http_utils_log("Length: %d", (int)inHeader->len);
     strncpy(temp, inHeader->methodPtr, 8);
     http_utils_log("Method: %s", temp);
     strncpy(temp, inHeader->urlPtr, 20);
@@ -1425,6 +1431,8 @@ void PrintHTTPHeader(HTTPHeader_t *inHeader)
     http_utils_log("Protocol: %s", temp);
     http_utils_log("Status Code: %d", inHeader->statusCode);
     http_utils_log("ChannelID: %d", inHeader->channelID);
-    http_utils_log("Content length: %ld", (uint32_t)(inHeader->contentLength));
+    //http_utils_log("Content-Length: %ld", (uint32_t)(inHeader->contentLength));
     http_utils_log("Persistent: %s", YesOrNo(inHeader->persistent));
+    http_utils_log("chunkedData: %s", YesOrNo(inHeader->chunkedData));
+    http_utils_log("extraDataLen: %d", inHeader->extraDataLen);
 }

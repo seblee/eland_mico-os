@@ -37,12 +37,9 @@
 #endif
 #include "mico_errno.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
 
 /** @addtogroup MICO_Core_APIs
   * @{
@@ -54,76 +51,80 @@ extern "C" {
   */
 
 /** For compatibility with BSD code */
-struct in_addr {
-    uint32_t s_addr;
+struct in_addr
+{
+  uint32_t s_addr;
 };
 
 /** 255.255.255.255 */
-#define INADDR_NONE         ((uint32_t)0xffffffffUL)
+#define INADDR_NONE ((uint32_t)0xffffffffUL)
 /** 127.0.0.1 */
-#define INADDR_LOOPBACK     ((uint32_t)0x7f000001UL)
+#define INADDR_LOOPBACK ((uint32_t)0x7f000001UL)
 /** 0.0.0.0 */
-#define INADDR_ANY          ((uint32_t)0x00000000UL)
+#define INADDR_ANY ((uint32_t)0x00000000UL)
 /** 255.255.255.255 */
-#define INADDR_BROADCAST    ((uint32_t)0xffffffffUL)
+#define INADDR_BROADCAST ((uint32_t)0xffffffffUL)
 
 /* members are in network byte order */
-struct sockaddr_in {
-    uint8_t sin_len;
-    uint8_t sin_family;
-    uint16_t sin_port;
-    struct in_addr sin_addr;
-    char sin_zero[8];
+struct sockaddr_in
+{
+  uint8_t sin_len;
+  uint8_t sin_family;
+  uint16_t sin_port;
+  struct in_addr sin_addr;
+  char sin_zero[8];
 };
 
-struct sockaddr {
-    uint8_t sa_len;
-    uint8_t sa_family;
-    uint8_t sa_data[14];
+struct sockaddr
+{
+  uint8_t sa_len;
+  uint8_t sa_family;
+  uint8_t sa_data[14];
 };
 
 #ifndef socklen_t
-#  define socklen_t uint32_t
+#define socklen_t uint32_t
 #endif
 
-struct hostent {
-    char  *h_name;      /* Official name of the host. */
-    char **h_aliases;   /* A pointer to an array of pointers to alternative host names,
+struct hostent
+{
+  char *h_name;               /* Official name of the host. */
+  char **h_aliases;           /* A pointer to an array of pointers to alternative host names,
                            terminated by a null pointer. */
-    int    h_addrtype;  /* Address type. */
-    int    h_length;    /* The length, in bytes, of the address. */
-    char **h_addr_list; /* A pointer to an array of pointers to network addresses (in
+  int h_addrtype;             /* Address type. */
+  int h_length;               /* The length, in bytes, of the address. */
+  char **h_addr_list;         /* A pointer to an array of pointers to network addresses (in
                            network byte order) for the host, terminated by a null pointer. */
 #define h_addr h_addr_list[0] /* for backward compatibility */
 };
 
-
-struct addrinfo {
-    int               ai_flags;      /* Input flags. */
-    int               ai_family;     /* Address family of socket. */
-    int               ai_socktype;   /* Socket type. */
-    int               ai_protocol;   /* Protocol of socket. */
-    socklen_t         ai_addrlen;    /* Length of socket address. */
-    struct sockaddr  *ai_addr;       /* Socket address of socket. */
-    char             *ai_canonname;  /* Canonical name of service location. */
-    struct addrinfo  *ai_next;       /* Pointer to next in list. */
+struct addrinfo
+{
+  int ai_flags;             /* Input flags. */
+  int ai_family;            /* Address family of socket. */
+  int ai_socktype;          /* Socket type. */
+  int ai_protocol;          /* Protocol of socket. */
+  socklen_t ai_addrlen;     /* Length of socket address. */
+  struct sockaddr *ai_addr; /* Socket address of socket. */
+  char *ai_canonname;       /* Canonical name of service location. */
+  struct addrinfo *ai_next; /* Pointer to next in list. */
 };
 
 /* Socket protocol types (TCP/UDP/RAW) */
-#define SOCK_STREAM     1
-#define SOCK_DGRAM      2
-#define SOCK_RAW        3
+#define SOCK_STREAM 1
+#define SOCK_DGRAM 2
+#define SOCK_RAW 3
 
-#define  SOL_SOCKET  0xfff    /* options for socket level */
+#define SOL_SOCKET 0xfff /* options for socket level */
 
-#define AF_UNSPEC       0
-#define AF_INET         2
-#define PF_INET         AF_INET
-#define PF_UNSPEC       AF_UNSPEC
+#define AF_UNSPEC 0
+#define AF_INET 2
+#define PF_INET AF_INET
+#define PF_UNSPEC AF_UNSPEC
 
-#define IPPROTO_IP      0
-#define IPPROTO_TCP     6
-#define IPPROTO_UDP     17
+#define IPPROTO_IP 0
+#define IPPROTO_TCP 6
+#define IPPROTO_UDP 17
 #define IPPROTO_UDPLITE 136
 
 #define F_GETFL 3
@@ -134,108 +135,107 @@ struct addrinfo {
 /*
  * Options for level IPPROTO_IP
  */
-#define IP_TOS             1
-#define IP_TTL             2
+#define IP_TOS 1
+#define IP_TTL 2
 
-typedef struct ip_mreq {
-    struct in_addr imr_multiaddr; /* IP multicast address of group */
-    struct in_addr imr_interface; /* local IP address of interface */
+typedef struct ip_mreq
+{
+  struct in_addr imr_multiaddr; /* IP multicast address of group */
+  struct in_addr imr_interface; /* local IP address of interface */
 } ip_mreq;
-
 
 /**
   * @brief  Socket option types, level: SOL_SOCKET
   */
 typedef enum {
-    SO_DEBUG              = 0x0001,     /**< Unimplemented: turn on debugging info recording */
-    SO_ACCEPTCONN         = 0x0002,     /**< socket has had listen() */
-    SO_REUSEADDR          = 0x0004,     /**< Allow local address reuse */
-    SO_KEEPALIVE          = 0x0008,     /**< keep connections alive */
-    SO_DONTROUTE          = 0x0010,     /**< Just use interface addresses */
-    SO_BROADCAST          = 0x0020,     /**< Permit to send and to receive broadcast messages */
-    SO_USELOOPBACK        = 0x0040,     /**< Bypass hardware when possible */
-    SO_LINGER             = 0x0080,     /**< linger on close if data present */
-    SO_OOBINLINE          = 0x0100,     /**< Leave received OOB data in line */
-    SO_REUSEPORT          = 0x0200,     /**< Allow local address & port reuse */
-    SO_BLOCKMODE          = 0x1000,     /**< set socket as block(optval=0)/non-block(optval=1) mode.
+  SO_DEBUG = 0x0001,       /**< Unimplemented: turn on debugging info recording */
+  SO_ACCEPTCONN = 0x0002,  /**< socket has had listen() */
+  SO_REUSEADDR = 0x0004,   /**< Allow local address reuse */
+  SO_KEEPALIVE = 0x0008,   /**< keep connections alive */
+  SO_DONTROUTE = 0x0010,   /**< Just use interface addresses */
+  SO_BROADCAST = 0x0020,   /**< Permit to send and to receive broadcast messages */
+  SO_USELOOPBACK = 0x0040, /**< Bypass hardware when possible */
+  SO_LINGER = 0x0080,      /**< linger on close if data present */
+  SO_OOBINLINE = 0x0100,   /**< Leave received OOB data in line */
+  SO_REUSEPORT = 0x0200,   /**< Allow local address & port reuse */
+  SO_BLOCKMODE = 0x1000,   /**< set socket as block(optval=0)/non-block(optval=1) mode.
                                              Default is block mode. */
-    SO_SNDBUF             = 0x1001,
-    SO_SNDTIMEO           = 0x1005,     /**< Send timeout in block mode. block for ever in dafault mode. */
-    SO_RCVTIMEO           = 0x1006,     /**< Recv timeout in block mode. block 1 second in default mode. */
-    SO_ERROR              = 0x1007,     /**< Get socket error number. */
-    SO_TYPE               = 0x1008,     /**< Get socket type. */
-    SO_NO_CHECK           = 0x100a      /**< Don't create UDP checksum. */
+  SO_SNDBUF = 0x1001,
+  SO_SNDTIMEO = 0x1005, /**< Send timeout in block mode. block for ever in dafault mode. */
+  SO_RCVTIMEO = 0x1006, /**< Recv timeout in block mode. block 1 second in default mode. */
+  SO_ERROR = 0x1007,    /**< Get socket error number. */
+  SO_TYPE = 0x1008,     /**< Get socket type. */
+  SO_NO_CHECK = 0x100a  /**< Don't create UDP checksum. */
 
 } SOCK_OPT_VAL;
 
-struct pollfd {
-	int fd; /**< fd related to */
-	short events; /**< which POLL... events to respond to */
-	short revents; /**< which POLL... events occurred */
+struct pollfd
+{
+  int fd;        /**< fd related to */
+  short events;  /**< which POLL... events to respond to */
+  short revents; /**< which POLL... events occurred */
 };
-#define POLLIN		0x0001
-#define POLLPRI		0x0002
-#define POLLOUT		0x0004
-#define POLLERR		0x0008
-#define POLLHUP		0x0010
-#define POLLNVAL	0x0020
-
+#define POLLIN 0x0001
+#define POLLPRI 0x0002
+#define POLLOUT 0x0004
+#define POLLERR 0x0008
+#define POLLHUP 0x0010
+#define POLLNVAL 0x0020
 
 /**
   * @brief  IP option types, level: IPPROTO_IP
   */
 typedef enum {
-    IP_ADD_MEMBERSHIP       = 0x0003,     /**< Join multicast group. */
-    IP_DROP_MEMBERSHIP      = 0x0004,     /**< Leave multicast group. */
-    IP_MULTICAST_TTL        = 0x0005,
-    IP_MULTICAST_IF         = 0x0006,
-    IP_MULTICAST_LOOP       = 0x0007
+  IP_ADD_MEMBERSHIP = 0x0003,  /**< Join multicast group. */
+  IP_DROP_MEMBERSHIP = 0x0004, /**< Leave multicast group. */
+  IP_MULTICAST_TTL = 0x0005,
+  IP_MULTICAST_IF = 0x0006,
+  IP_MULTICAST_LOOP = 0x0007
 } IP_OPT_VAL;
 
 /**
   * @brief  TCP option types, level: IPPROTO_TCP
   */
 typedef enum {
-	TCP_NODELAY             = 0x0001,
-	TCP_KEEPALIVE           = 0x0002,
-    TCP_CONN_NUM            = 0x0006,     /**< Read the current connected TCP client number. */
-    TCP_MAX_CONN_NUM        = 0x0007,     /**< Set the max number of TCP client that server can support. */
-    TCP_KEEPIDLE            = 0x0003,     /**< set pcb->keep_idle - send KEEPALIVE probes when idle for pcb->keep_idle milliseconds */
-    TCP_KEEPINTVL           = 0x0004,     /**< set pcb->keep_intvl - Use seconds for get/setsockopt */
-    TCP_KEEPCNT             = 0x0005,     /**< set pcb->keep_cnt - Use number of probes sent for get/setsockopt */
+  TCP_NODELAY = 0x0001,
+  TCP_KEEPALIVE = 0x0002,
+  TCP_CONN_NUM = 0x0006,     /**< Read the current connected TCP client number. */
+  TCP_MAX_CONN_NUM = 0x0007, /**< Set the max number of TCP client that server can support. */
+  TCP_KEEPIDLE = 0x0003,     /**< set pcb->keep_idle - send KEEPALIVE probes when idle for pcb->keep_idle milliseconds */
+  TCP_KEEPINTVL = 0x0004,    /**< set pcb->keep_intvl - Use seconds for get/setsockopt */
+  TCP_KEEPCNT = 0x0005,      /**< set pcb->keep_cnt - Use number of probes sent for get/setsockopt */
 } TCP_OPT_VAL;
 
-
 #if !defined(FIONREAD) || !defined(FIONBIO)
-#define IOCPARM_MASK    0x7fU           /* parameters must be < 128 bytes */
-#define IOC_VOID        0x20000000UL    /* no parameters */
-#define IOC_OUT         0x40000000UL    /* copy out parameters */
-#define IOC_IN          0x80000000UL    /* copy in parameters */
-#define IOC_INOUT       (IOC_IN|IOC_OUT)
-                                        /* 0x20000000 distinguishes new &
+#define IOCPARM_MASK 0x7fU    /* parameters must be < 128 bytes */
+#define IOC_VOID 0x20000000UL /* no parameters */
+#define IOC_OUT 0x40000000UL  /* copy out parameters */
+#define IOC_IN 0x80000000UL   /* copy in parameters */
+#define IOC_INOUT (IOC_IN | IOC_OUT)
+/* 0x20000000 distinguishes new &
                                            old ioctl's */
-#define _IO(x,y)        (IOC_VOID|((x)<<8)|(y))
+#define _IO(x, y) (IOC_VOID | ((x) << 8) | (y))
 
-#define _IOR(x,y,t)     (IOC_OUT|(((long)sizeof(t)&IOCPARM_MASK)<<16)|((x)<<8)|(y))
+#define _IOR(x, y, t) (IOC_OUT | (((long)sizeof(t) & IOCPARM_MASK) << 16) | ((x) << 8) | (y))
 
-#define _IOW(x,y,t)     (IOC_IN|(((long)sizeof(t)&IOCPARM_MASK)<<16)|((x)<<8)|(y))
+#define _IOW(x, y, t) (IOC_IN | (((long)sizeof(t) & IOCPARM_MASK) << 16) | ((x) << 8) | (y))
 #endif /* !defined(FIONREAD) || !defined(FIONBIO) */
 
 #ifndef FIONREAD
-#define FIONREAD    _IOR('f', 127, unsigned long) /* get # bytes to read */
+#define FIONREAD _IOR('f', 127, unsigned long) /* get # bytes to read */
 #endif
 #ifndef FIONBIO
-#define FIONBIO     _IOW('f', 126, unsigned long) /* set/clear non-blocking i/o */
+#define FIONBIO _IOW('f', 126, unsigned long) /* set/clear non-blocking i/o */
 #endif
 
-typedef void* mico_ssl_t;
+typedef void *mico_ssl_t;
 
 /**
   * @brief  Supported SSL protocol version
   */
 enum ssl_version_type_e
 {
-  SSL_V3_MODE   = 1,
+  SSL_V3_MODE = 1,
   TLS_V1_0_MODE = 2,
   TLS_V1_1_MODE = 3,
   TLS_V1_2_MODE = 4,
@@ -244,38 +244,39 @@ typedef uint8_t ssl_version_type_t;
 
 #if !defined __GNUC__
 
-struct timeval {
-    long      tv_sec;     /* seconds */
-    long      tv_usec;    /* and microseconds */
+struct timeval
+{
+  long tv_sec;  /* seconds */
+  long tv_usec; /* and microseconds */
 };
 
-#define FD_SETSIZE        64    /**< MAX fd number is 64 in MICO. */
-#define howmany(x, y)   (((x) + ((y) - 1)) / (y))
+#define FD_SETSIZE 64 /**< MAX fd number is 64 in MICO. */
+#define howmany(x, y) (((x) + ((y)-1)) / (y))
 
-#define NBBY              8     /**< number of bits in a byte. */
-#define NFDBITS (sizeof(unsigned long) * NBBY)        /**< bits per mask */
+#define NBBY 8                                 /**< number of bits in a byte. */
+#define NFDBITS (sizeof(unsigned long) * NBBY) /**< bits per mask */
 
-#define _fdset_mask(n)    ((unsigned long)1 << ((n) % NFDBITS))
+#define _fdset_mask(n) ((unsigned long)1 << ((n) % NFDBITS))
 
-typedef struct fd_set {
-  unsigned long   fds_bits[howmany(FD_SETSIZE, NFDBITS)];
+typedef struct fd_set
+{
+  unsigned long fds_bits[howmany(FD_SETSIZE, NFDBITS)];
 } fd_set;
 
-#define FD_SET(n, p)      ((p)->fds_bits[(n)/NFDBITS] |= _fdset_mask(n))  /**< Add a fd to FD set. */
-#define FD_CLR(n, p)      ((p)->fds_bits[(n)/NFDBITS] &= ~_fdset_mask(n)) /**< Remove fd from FD set. */
-#define FD_ISSET(n, p)    ((p)->fds_bits[(n)/NFDBITS] & _fdset_mask(n))   /**< Check if the fd is set in FD set. */
-#define FD_ZERO(p)        memset(p, 0, sizeof(*(p)))                      /**< Clear FD set. */
+#define FD_SET(n, p) ((p)->fds_bits[(n) / NFDBITS] |= _fdset_mask(n))  /**< Add a fd to FD set. */
+#define FD_CLR(n, p) ((p)->fds_bits[(n) / NFDBITS] &= ~_fdset_mask(n)) /**< Remove fd from FD set. */
+#define FD_ISSET(n, p) ((p)->fds_bits[(n) / NFDBITS] & _fdset_mask(n)) /**< Check if the fd is set in FD set. */
+#define FD_ZERO(p) memset(p, 0, sizeof(*(p)))                          /**< Clear FD set. */
 
 #endif
 
 #ifndef SHUT_RD
-  #define SHUT_RD   1
-  #define SHUT_WR   2
-  #define SHUT_RDWR 3
+#define SHUT_RD 1
+#define SHUT_WR 2
+#define SHUT_RDWR 3
 #endif
 
-#define MAX_TCP_CLIENT_PER_SERVER  5
-
+#define MAX_TCP_CLIENT_PER_SERVER 5
 
 /** @defgroup MICO_SOCKET_GROUP_1 MICO BSD-like Socket Functions
   * @brief Provide basic APIs for socket function
@@ -316,7 +317,7 @@ int socket(int domain, int type, int protocol);
   * @param  optlen: containing the size of the buffer pointed to by optval
   * @retval On success, zero is returned.  On error, -1 is returned.
   */
-int setsockopt (int socket, int level, int optname, void *optval, socklen_t optlen);
+int setsockopt(int socket, int level, int optname, void *optval, socklen_t optlen);
 
 /**
   * @brief  Get options on sockets
@@ -331,7 +332,7 @@ int setsockopt (int socket, int level, int optname, void *optval, socklen_t optl
   *         the actual size of the value returned. 
   * @retval On success, zero is returned.  On error, -1 is returned.
   */
-int getsockopt (int socket, int level, int optname, void *optval, socklen_t *optlen_ptr);
+int getsockopt(int socket, int level, int optname, void *optval, socklen_t *optlen_ptr);
 
 /**
   * @brief  bind a name to a socket
@@ -343,7 +344,7 @@ int getsockopt (int socket, int level, int optname, void *optval, socklen_t *opt
   * @param  length: This parameter containing the size of the buffer pointed to by addr
   * @retval On success, zero is returned.  On error, -1 is returned.
   */
-int bind (int socket, struct sockaddr *addr, socklen_t length);
+int bind(int socket, struct sockaddr *addr, socklen_t length);
 
 /**
   * @brief    Initiate a connection on a socket
@@ -355,7 +356,7 @@ int bind (int socket, struct sockaddr *addr, socklen_t length);
   * @param    length: This parameter containing the size of the buffer pointed to by addr
   * @retval   On success, zero is returned.  On error, -1 is returned.
   */
-int connect (int socket, struct sockaddr *addr, socklen_t length);
+int connect(int socket, struct sockaddr *addr, socklen_t length);
 
 /**
   * @brief    Listen for connections on a socket
@@ -369,7 +370,7 @@ int connect (int socket, struct sockaddr *addr, socklen_t length);
   *           use 0 is fine.
   * @retval   On success, zero is returned.  On error, -1 is returned.
   */
-int listen (int socket, int n);
+int listen(int socket, int n);
 
 /**
   * @brief    Accept a connection on a socket
@@ -386,7 +387,7 @@ int listen (int socket, int n);
   *             by addr.
   * @retval   On success, zero is returned.  On error, -1 is returned.
   */
-int accept (int socket, struct sockaddr *addr, socklen_t *length_ptr);
+int accept(int socket, struct sockaddr *addr, socklen_t *length_ptr);
 
 /**
   * @brief      Monitor multiple file descriptors, waiting until one or more of the 
@@ -436,15 +437,14 @@ int poll(struct pollfd *fds, int nfds, int timeout);
   * @retval     On success, these calls return the number of bytes sent.  On error,
   *             -1 is returned,
   */
-int send (int socket, const void *buffer, size_t size, int flags);
+int send(int socket, const void *buffer, size_t size, int flags);
 
 /**
   * @brief      Send a message on a socket
   * @attention  Never doing operations on one socket in different MICO threads
   * @note       Refer send() for details.
   */
-ssize_t write (int filedes, const void *buffer, size_t size);
-
+ssize_t write(int filedes, const void *buffer, size_t size);
 
 /**
   * @brief      Send a message on a socket to a specific target address.
@@ -463,8 +463,7 @@ ssize_t write (int filedes, const void *buffer, size_t size);
   * @retval     On success, these calls return the number of bytes sent.  On error,
   *             -1 is returned,
   */
-int sendto (int socket, const void *buffer, size_t size, int flags, const struct sockaddr *addr, socklen_t length);
-
+int sendto(int socket, const void *buffer, size_t size, int flags, const struct sockaddr *addr, socklen_t length);
 
 /**
   * @brief      Receive a message from a socket.
@@ -485,15 +484,14 @@ int sendto (int socket, const void *buffer, size_t size, int flags, const struct
   *             The value 0 may also be returned if the requested number of bytes to
   *             receive from a stream socket was 0.
   */
-int recv (int socket, void *buffer, size_t size, int flags);
+int recv(int socket, void *buffer, size_t size, int flags);
 
 /**
   * @brief      Receive a message from a socket.
   * @attention  Never doing operations on one socket in different MICO threads
   * @note       Refer recv() for details.
   */
-ssize_t read (int filedes, void *buffer, size_t size);
-
+ssize_t read(int filedes, void *buffer, size_t size);
 
 /**
   * @brief      Receive a message from a socket and get the source address.
@@ -523,8 +521,8 @@ ssize_t read (int filedes, void *buffer, size_t size);
   *             The value 0 may also be returned if the requested number of bytes to
   *             receive from a stream socket was 0.
   */
-int recvfrom (int socket, void *buffer, size_t size, int flags, struct sockaddr *addr, socklen_t *length_ptr);
- 
+int recvfrom(int socket, void *buffer, size_t size, int flags, struct sockaddr *addr, socklen_t *length_ptr);
+
 /**
   * @brief      Close a file descriptor.
   * @attention  Never doing operations on one socket in different MICO threads
@@ -534,7 +532,7 @@ int recvfrom (int socket, void *buffer, size_t size, int flags, struct sockaddr 
   * @param      filedes: A file descriptor.
   * @retval     Returns zero on success.  On error, -1 is returned.
   */
-int close (int filedes);
+int close(int filedes);
 
 /**
   * @brief
@@ -573,11 +571,9 @@ int ioctl(int filedes, int command, ...);
   */
 int fcntl(int filedes, int command, ...);
 
-
 /**
   * @}
   */
-
 
 /** @defgroup MICO_SOCKET_GROUP_2 MICO Socket Tool Functions
   * @brief Provide APIs for MiCO Socket Tool functions
@@ -591,8 +587,7 @@ int fcntl(int filedes, int command, ...);
   * @param      name: Internet host address from IPv4 numbers-and-dots.
   * @retval     Returns zero on success.  On error, -1 is returned.
   */
-uint32_t inet_addr (const char *name);
-
+uint32_t inet_addr(const char *name);
 
 /**
   * @brief      Converts the Internet host address in, given in network byte 
@@ -604,9 +599,7 @@ uint32_t inet_addr (const char *name);
   * @param      x: the Internet host address in.
   * @retval     Returns the same value as param s.
   */
-extern char *inet_ntoa (struct in_addr addr);
-
-
+extern char *inet_ntoa(struct in_addr addr);
 
 /** @brief      Get the IP address from a host name. 
   * 
@@ -624,15 +617,14 @@ extern char *inet_ntoa (struct in_addr addr);
   *             to by addr, 16 is recommended.
   * @retval     kNoerr or kGeneralErr
   */
-struct hostent* gethostbyname(const char *name);
+struct hostent *gethostbyname(const char *name);
 int getaddrinfo(const char *nodename,
-       const char *servname,
-       const struct addrinfo *hints,
-       struct addrinfo **res);
+                const char *servname,
+                const struct addrinfo *hints,
+                struct addrinfo **res);
 void freeaddrinfo(struct addrinfo *ai);
-int getpeername (int s, struct sockaddr *name, socklen_t *namelen);
-int getsockname (int s, struct sockaddr *name, socklen_t *namelen);
-
+int getpeername(int s, struct sockaddr *name, socklen_t *namelen);
+int getsockname(int s, struct sockaddr *name, socklen_t *namelen);
 
 /** @brief      Set TCP keep-alive mechanism parameters. 
  *
@@ -653,7 +645,6 @@ int getsockname (int s, struct sockaddr *name, socklen_t *namelen);
  */
 void set_tcp_keepalive(int inMaxErrNum, int inSeconds);
 
-
 /** @brief      Get TCP keep-alive mechanism parameters. Refer to @ref set_tcp_keepalive
  *
  *  @param      outMaxErrNum: Point to the address that store the maxErrNumber.
@@ -663,7 +654,6 @@ void set_tcp_keepalive(int inMaxErrNum, int inSeconds);
  *  @retval     kNoerr or kGeneralErr
  */
 void get_tcp_keepalive(int *outMaxErrNum, int *outSeconds);
-
 
 /* SSL */
 /** @brief      Used to set the ssl protocol version for both ssl client and ssl server 
@@ -675,8 +665,7 @@ void get_tcp_keepalive(int *outMaxErrNum, int *outSeconds);
  *
  *  @retval     void
  */
-void ssl_set_client_version( ssl_version_type_t version );
-
+void ssl_set_client_version(ssl_version_type_t version);
 
 /** @brief      Get the internal socket fire description
  *
@@ -686,8 +675,7 @@ void ssl_set_client_version( ssl_version_type_t version );
  *
  *  @retval     File descriptor for the SSL connection.
  */
-int ssl_socket( mico_ssl_t ssl );
-
+int ssl_socket(mico_ssl_t ssl);
 
 /** @brief      Used by the SSL server. Set the certificate and private key for a SSL server. 
  *
@@ -715,7 +703,7 @@ void ssl_set_cert(const char *_cert_pem, const char *private_key_pem);
  *
  *  @retval     return the SSL context pointer on success or NULL for fail.
  */
-mico_ssl_t ssl_connect(int fd, int calen, char*ca, int *errno);
+mico_ssl_t ssl_connect(int fd, int calen, char *ca, int *errno);
 
 /** @brief      SSL Server accept a SSL connection
  *
@@ -724,7 +712,6 @@ mico_ssl_t ssl_connect(int fd, int calen, char*ca, int *errno);
  *  @retval     return the SSL context pointer on success or NULL for fail.
  */
 mico_ssl_t ssl_accept(int fd);
-
 
 /** @brief      SSL send data
  *
@@ -735,7 +722,7 @@ mico_ssl_t ssl_accept(int fd);
  *  @retval     On success, these calls return the number of bytes sent.  On error,
  *             -1 is returned,
  */
-int ssl_send(mico_ssl_t ssl, void* data, size_t len);
+int ssl_send(mico_ssl_t ssl, void *data, size_t len);
 
 /** @brief      SSL receive data
  *
@@ -746,7 +733,7 @@ int ssl_send(mico_ssl_t ssl, void* data, size_t len);
  *  @retval     On success, these calls return the number of bytes received.  On error,
  *             -1 is returned,
  */
-int ssl_recv(mico_ssl_t ssl, void* data, size_t len);
+int ssl_recv(mico_ssl_t ssl, void *data, size_t len);
 
 /** @brief      Close the SSL session, release resource.
  *
@@ -756,18 +743,15 @@ int ssl_recv(mico_ssl_t ssl, void* data, size_t len);
  */
 int ssl_close(mico_ssl_t ssl);
 
-
-int ssl_pending(void*ssl);
-int ssl_get_error(void* ssl, int ret);
-void ssl_set_using_nonblock(void* ssl, int nonblock);
-
+int ssl_pending(void *ssl);
+int ssl_get_error(void *ssl, int ret);
+void ssl_set_using_nonblock(void *ssl, int nonblock);
+void ssl_set_client_cert(const char *cert_pem, const char *private_key_pem);
+void *ssl_connect_sni(int fd, int calen, char *ca, char *sni_servername, int *errno);
 
 /**
   * @}
   */
-
-
-
 
 /**
   * @}
@@ -781,6 +765,3 @@ void ssl_set_using_nonblock(void* ssl, int nonblock);
 #endif
 
 #endif /*__MICO_SOCKET_H__*/
-
-
-
