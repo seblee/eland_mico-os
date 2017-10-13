@@ -419,11 +419,11 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
             /* Find Chunk data length */
             while (findChunkedDataLength(inHeader->chunkedDataBufferPtr, inHeader->extraDataLen, &inHeader->extraDataPtr, "%llu", &inHeader->contentLength) == false)
             {
-                http_utils_log("HTTPHeaderParse----1----");
+                //http_utils_log("HTTPHeaderParse----1----");
                 require_action(inHeader->extraDataLen < inHeader->chunkedDataBufferLen, exit, err = kMalformedErr);
 
-                //selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
-                //require_action(selectResult >= 1, exit, err = kNotReadableErr);
+                // selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                // require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
                 readResult = ssl_recv(ssl, inHeader->chunkedDataBufferPtr + inHeader->extraDataLen, (size_t)(inHeader->chunkedDataBufferLen - inHeader->extraDataLen));
 
@@ -514,7 +514,7 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                 }
                 else
                 {
-                    http_utils_log("HTTPHeaderParse----1----");
+                    //http_utils_log("HTTPHeaderParse----1----");
                     /* Callback , read , callback , read CRLF */
                     (inHeader->onReceivedDataCallback)(inHeader, pos,
                                                        (uint8_t *)inHeader->extraDataPtr,
@@ -536,7 +536,7 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                             readLength = inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen);
 
                         readResult = ssl_recv(ssl, (uint8_t *)inHeader->extraDataPtr, readLength);
-                        http_utils_log("HTTPHeaderParse----4----");
+                        //http_utils_log("HTTPHeaderParse----4----");
 
                         if (readResult > 0)
                             inHeader->extraDataLen += readResult;
@@ -595,19 +595,16 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
     //   err = kNoErr;
     //   goto exit;
     // }
-
     while (inHeader->extraDataLen < inHeader->contentLength)
     {
-        selectResult = select(inSock + 1, &readSet, NULL, NULL, (struct timeval *)&t);
-        require_action(selectResult >= 1, exit, err = kNotReadableErr);
+        //selectResult = select(inSock + 1, &readSet, NULL, NULL, (struct timeval *)&t);
+        //require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
         if (inHeader->isCallbackSupported == true)
         {
             /* We has extra data, and we give these data to application by onReceivedDataCallback function */
             readLength = inHeader->contentLength - inHeader->extraDataLen > READ_LENGTH ? READ_LENGTH : inHeader->contentLength - inHeader->extraDataLen;
-            readResult = ssl_recv(ssl,
-                                  (uint8_t *)(inHeader->extraDataPtr),
-                                  readLength);
+            readResult = ssl_recv(ssl, (uint8_t *)(inHeader->extraDataPtr), readLength);
 
             if (readResult > 0)
                 inHeader->extraDataLen += readResult;
@@ -616,6 +613,7 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                 err = kConnectionErr;
                 goto exit;
             }
+            http_utils_log("readResult:%d,extraDataLen:%ld,contentLength:%ld", readResult, inHeader->extraDataLen, (uint32_t)inHeader->contentLength);
             err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
             if (err != kNoErr)
                 goto exit;
@@ -636,6 +634,7 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
             }
         }
     }
+    http_utils_log("contentLength:%ld,extraDataLen:%ld", (uint32_t)inHeader->contentLength, inHeader->extraDataLen);
     err = kNoErr;
 
 exit:
@@ -1421,8 +1420,8 @@ void PrintHTTPHeader(HTTPHeader_t *inHeader)
 {
     char temp[20];
     //(void)inHeader; // Fix warning when debug=0
-    //http_utils_log("Header: \r\n%s", inHeader->buf);
-    //http_utils_log("Length: %d", (int)inHeader->len);
+    http_utils_log("Header: \r\n%s", inHeader->buf);
+    http_utils_log("Length: %d", (int)inHeader->len);
     strncpy(temp, inHeader->methodPtr, 8);
     http_utils_log("Method: %s", temp);
     strncpy(temp, inHeader->urlPtr, 20);
