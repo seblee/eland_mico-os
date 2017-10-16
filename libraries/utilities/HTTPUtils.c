@@ -613,7 +613,6 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                 err = kConnectionErr;
                 goto exit;
             }
-            http_utils_log("readResult:%d,extraDataLen:%ld,contentLength:%ld", readResult, inHeader->extraDataLen, (uint32_t)inHeader->contentLength);
             err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
             if (err != kNoErr)
                 goto exit;
@@ -634,7 +633,6 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
             }
         }
     }
-    http_utils_log("contentLength:%ld,extraDataLen:%ld", (uint32_t)inHeader->contentLength, inHeader->extraDataLen);
     err = kNoErr;
 
 exit:
