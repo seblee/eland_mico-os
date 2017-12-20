@@ -60,9 +60,7 @@
 #define HTTP_CHUNKED "chunked"
 
 #define iswhite(c) ((((c) == ISO_nl) || ((c) == ISO_cr) || \
-((c) == ISO_space) || ((c) == ISO_tab)) \
-                        ? TRUE          \
-                        : FALSE)
+((c) == ISO_space) || ((c) == ISO_tab)) ? TRUE : FALSE)
 
 /* Find the next user agent product, version, and comment from hdrline.  Set
 * the pointers to NULL if not found.  Return a pointer to the first unparsed

@@ -31,6 +31,9 @@
 
 #pragma once
 
+#ifndef __PLATFORM_H_
+#define __PLATFORM_H_
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -156,12 +159,12 @@ typedef struct
   const mico_i2c_pinmap_t *i2c_pinmap;
 } platform_peripherals_pinmap_t;
 
-#define STDIO_UART MICO_UART_NONE //MICO_UART_2
+#define STDIO_UART MICO_UART_2
 #define STDIO_UART_BAUDRATE (115200)
 
 #define UART_FOR_APP MICO_UART_1
 #define MFG_TEST MICO_UART_1
-#define CLI_UART MICO_UART_NONE //MICO_UART_2
+#define CLI_UART MICO_UART_2
 
 /* I/O connection <-> Peripheral Connections */
 #define BOOT_SEL MICO_GPIO_NONE
@@ -194,15 +197,16 @@ typedef struct
 #define MICO_AUDIO_AIROBOT_SPI_MOSI MICO_GPIO_9
 #define MICO_AUDIO_AIROBOT_SPI_CLK MICO_GPIO_10
 // LED
-#define MICO_AUDIO_AIROBOT_LED_RGB MICO_GPIO_22
-#define MICO_AUDIO_AIROBOT_LED_WORK MICO_GPIO_12
+#define MICO_AUDIO_AIROBOT_LED_RGB MICO_UART_NONE  //MICO_GPIO_22
+#define MICO_AUDIO_AIROBOT_LED_WORK MICO_GPIO_NONE //MICO_GPIO_12
 
 //IO
-#define MICO_AUDIO_AIROBOT_IO_NOTIFY MICO_GPIO_13
-#define MICO_AUDIO_AIROBOT_IO_WAKE_UP MICO_GPIO_14
-#define MICO_AUDIO_AIROBOT_IO_AP_POWER MICO_GPIO_23
+#define MICO_AUDIO_AIROBOT_IO_NOTIFY MICO_GPIO_NONE   //MICO_GPIO_13
+#define MICO_AUDIO_AIROBOT_IO_WAKE_UP MICO_GPIO_NONE  //MICO_GPIO_14
+#define MICO_AUDIO_AIROBOT_IO_AP_POWER MICO_GPIO_NONE // MICO_GPIO_23
 #endif
 
 #ifdef __cplusplus
 } /*extern "C" */
+#endif
 #endif

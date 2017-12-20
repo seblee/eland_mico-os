@@ -56,42 +56,47 @@ int httpd_register_wsgi_handler(struct httpd_wsgi_call *wsgi_call)
 	if (!wsgi_call->uri)
 		return kNoErr;
 
-	for (i = 0; i < MAX_WSGI_HANDLERS; i++) {
+	for (i = 0; i < MAX_WSGI_HANDLERS; i++)
+	{
 		/*Find the first empty location in the calls array */
-		if (!calls[i] && store_index == -1) {
+		if (!calls[i] && store_index == -1)
+		{
 			httpd_d("Found empty location %d", i);
 			store_index = i;
 			continue;
 		}
-		if (strcmp(calls[i]->uri, wsgi_call->uri) == 0) {
+		if (strcmp(calls[i]->uri, wsgi_call->uri) == 0)
+		{
 			httpd_d("Found wsgi %s at slot %d",
-			      wsgi_call->uri, i);
+					wsgi_call->uri, i);
 			return kNoErr;
 		}
 	}
-	if (store_index == -1) {
+	if (store_index == -1)
+	{
 		httpd_d("Array full.. Cannot register wsgi %s", wsgi_call->uri);
 		return -kInProgressErr;
 	}
 
 	httpd_d("Register wsgi %s at %d", wsgi_call->uri,
-	      store_index);
+			store_index);
 
 	calls[store_index] = wsgi_call;
 	return kNoErr;
 }
 
-
 int httpd_register_wsgi_handlers(struct httpd_wsgi_call *wsgi_call_list, int
-					handlers_no)
+																			 handlers_no)
 {
 	int i, ret, err = 0;
 
-	for (i = 0; i < handlers_no; i++) {
+	for (i = 0; i < handlers_no; i++)
+	{
 		ret = httpd_register_wsgi_handler(&wsgi_call_list[i]);
-		if (ret != kNoErr) {
+		if (ret != kNoErr)
+		{
 			httpd_d("Error in registering %s handler\r\n",
-				wsgi_call_list[i].uri);
+					wsgi_call_list[i].uri);
 			err++;
 		}
 	}
@@ -106,8 +111,10 @@ int httpd_unregister_wsgi_handler(struct httpd_wsgi_call *wsgi_call)
 {
 	int i;
 
-	for (i = 0; i < MAX_WSGI_HANDLERS; i++) {
-		if (calls[i] && (calls[i] == wsgi_call)) {
+	for (i = 0; i < MAX_WSGI_HANDLERS; i++)
+	{
+		if (calls[i] && (calls[i] == wsgi_call))
+		{
 			calls[i] = NULL;
 			return 0;
 		}
@@ -117,13 +124,15 @@ int httpd_unregister_wsgi_handler(struct httpd_wsgi_call *wsgi_call)
 }
 
 int httpd_unregister_wsgi_handlers(struct httpd_wsgi_call *wsgi_call_list,
-				int handlers_no)
+								   int handlers_no)
 {
 	int i, ret, err = 0;
 
-	for (i = 0; i < handlers_no; i++) {
+	for (i = 0; i < handlers_no; i++)
+	{
 		ret = httpd_unregister_wsgi_handler(&wsgi_call_list[i]);
-		if (ret != kNoErr) {
+		if (ret != kNoErr)
+		{
 			httpd_d("Error in unregistering handler\r\n");
 			err++;
 		}
@@ -146,13 +155,14 @@ typedef enum {
 	SECOND_LF_FOUND,
 } httpd_purge_state_t;
 
-
 int httpd_purge_headers(int sock)
 {
 	unsigned char ch;
 	httpd_purge_state_t purge_state = ANY_OTHER_CHAR;
-	while (httpd_recv(sock, &ch, 1, 0) != 0) {
-		switch (ch) {
+	while (httpd_recv(sock, &ch, 1, 0) != 0)
+	{
+		switch (ch)
+		{
 		case '\r':
 			if (purge_state == ANY_OTHER_CHAR)
 				purge_state = FIRST_CR_FOUND;
@@ -167,7 +177,6 @@ int httpd_purge_headers(int sock)
 			break;
 		default:
 			purge_state = ANY_OTHER_CHAR;
-
 		}
 		if (purge_state == SECOND_LF_FOUND)
 			return kNoErr;
@@ -198,73 +207,80 @@ int httpd_send_header(int sock, const char *name, const char *value)
 
 int httpd_send_body(int sock, const unsigned char *body_image, uint32_t body_size)
 {
-  int offset = 0;
-  int ret = kNoErr;
-  int buff_size = 0;
-  char buff[HTTPD_SEND_BODY_DATA_MAX_LEN];
+	int offset = 0;
+	int ret = kNoErr;
+	int buff_size = 0;
+	char buff[HTTPD_SEND_BODY_DATA_MAX_LEN];
 
-  while (body_size > offset)
-  {
-    buff_size = MIN(HTTPD_SEND_BODY_DATA_MAX_LEN, (body_size - offset));
-    memcpy(buff, &body_image[offset], buff_size);
-    offset += buff_size;
-    ret = httpd_send(sock, buff, buff_size);
-    if(ret != kNoErr)
-      return ret;
-  }
-  return kNoErr;
+	while (body_size > offset)
+	{
+		buff_size = MIN(HTTPD_SEND_BODY_DATA_MAX_LEN, (body_size - offset));
+		memcpy(buff, &body_image[offset], buff_size);
+		offset += buff_size;
+		ret = httpd_send(sock, buff, buff_size);
+		if (ret != kNoErr)
+			return ret;
+	}
+	return kNoErr;
 }
 
 int httpd_send_default_headers(int sock, int hdr_fields)
 {
 	int ret = kNoErr;
 
-	if (hdr_fields & HTTPD_HDR_ADD_SERVER) {
+	if (hdr_fields & HTTPD_HDR_ADD_SERVER)
+	{
 		ret = httpd_send(sock, http_header_server,
-			strlen(http_header_server));
+						 strlen(http_header_server));
 		if (ret != kNoErr)
 			return -kInProgressErr;
 	}
 
-	if (hdr_fields & HTTPD_HDR_ADD_CONN_CLOSE) {
+	if (hdr_fields & HTTPD_HDR_ADD_CONN_CLOSE)
+	{
 		ret = httpd_send(sock, http_header_conn_close,
-			strlen(http_header_conn_close));
+						 strlen(http_header_conn_close));
 		if (ret != kNoErr)
 			return -kInProgressErr;
 	}
 
-	if (hdr_fields & HTTPD_HDR_ADD_CONN_KEEP_ALIVE) {
+	if (hdr_fields & HTTPD_HDR_ADD_CONN_KEEP_ALIVE)
+	{
 		ret = httpd_send(sock, http_header_conn_keep_alive,
-			strlen(http_header_conn_keep_alive));
+						 strlen(http_header_conn_keep_alive));
 		if (ret != kNoErr)
 			return -kInProgressErr;
 	}
 
 	/* Currently as we are sending chunked data, this is mandatory */
-	if (hdr_fields & HTTPD_HDR_ADD_TYPE_CHUNKED) {
+	if (hdr_fields & HTTPD_HDR_ADD_TYPE_CHUNKED)
+	{
 		ret = httpd_send(sock, http_header_type_chunked,
-			strlen(http_header_type_chunked));
+						 strlen(http_header_type_chunked));
 		if (ret != kNoErr)
 			return -kInProgressErr;
 	}
 
-	if (hdr_fields & HTTPD_HDR_ADD_CACHE_CTRL) {
+	if (hdr_fields & HTTPD_HDR_ADD_CACHE_CTRL)
+	{
 		ret = httpd_send(sock, http_header_cache_ctrl,
-			strlen(http_header_cache_ctrl));
+						 strlen(http_header_cache_ctrl));
 		if (ret != kNoErr)
 			return -kInProgressErr;
 	}
 
-	if (hdr_fields & HTTPD_HDR_ADD_CACHE_CTRL_NO_CHK) {
+	if (hdr_fields & HTTPD_HDR_ADD_CACHE_CTRL_NO_CHK)
+	{
 		ret = httpd_send(sock, http_header_cache_ctrl_no_chk,
-			strlen(http_header_cache_ctrl_no_chk));
+						 strlen(http_header_cache_ctrl_no_chk));
 		if (ret != kNoErr)
 			return -kInProgressErr;
 	}
 
-	if (hdr_fields & HTTPD_HDR_ADD_PRAGMA_NO_CACHE) {
+	if (hdr_fields & HTTPD_HDR_ADD_PRAGMA_NO_CACHE)
+	{
 		ret = httpd_send(sock, http_header_pragma_no_cache,
-			strlen(http_header_pragma_no_cache));
+						 strlen(http_header_pragma_no_cache));
 		if (ret != kNoErr)
 			return -kInProgressErr;
 	}
@@ -277,59 +293,66 @@ static inline bool chunked_encoding(httpd_request_t *req)
 	return req->wsgi->hdr_fields & HTTPD_HDR_ADD_TYPE_CHUNKED;
 }
 
-
-int httpd_send_response_301(httpd_request_t *req, char *location, const char
-		*content_type, char *content, int content_len)
+int httpd_send_response_301(httpd_request_t *req, char *location, const char *content_type, char *content, int content_len)
 {
 	int ret;
 
 	/* Parse the header tags. This is valid only for GET or HEAD request */
 	if (req->type == HTTPD_REQ_TYPE_GET ||
-		req->type == HTTPD_REQ_TYPE_HEAD) {
+		req->type == HTTPD_REQ_TYPE_HEAD)
+	{
 		ret = httpd_purge_headers(req->sock);
 
-		if (ret != kNoErr) {
+		if (ret != kNoErr)
+		{
 			httpd_d("Unable to purge headers");
 			return ret;
 		}
 	}
 
 	ret = httpd_send(req->sock, HTTP_RES_301, strlen(HTTP_RES_301));
-	if (ret != kNoErr) {
+	if (ret != kNoErr)
+	{
 		httpd_d("Error in sending the first line");
 		return ret;
 	}
 
 	/* Send default headers */
 	httpd_d("HTTP Req for URI %s", req->wsgi->uri);
-	if (req->wsgi->hdr_fields) {
+	if (req->wsgi->hdr_fields)
+	{
 		ret = httpd_send_default_headers(req->sock,
-				req->wsgi->hdr_fields);
-		if (ret != kNoErr) {
+										 req->wsgi->hdr_fields);
+		if (ret != kNoErr)
+		{
 			httpd_d("Error in sending default headers");
 			return ret;
 		}
 	}
 	ret = httpd_send_header(req->sock, "Location", location);
-	if (ret != kNoErr) {
+	if (ret != kNoErr)
+	{
 		httpd_d("Error in sending Location");
 		return ret;
 	}
 
 	ret = httpd_send_header(req->sock, "Content-Type", content_type);
-	if (ret != kNoErr) {
+	if (ret != kNoErr)
+	{
 		httpd_d("Error in sending Content-Type");
 		return ret;
 	}
 
 	/* Send Content-Length if non-chunked */
-	if (!chunked_encoding(req)) {
+	if (!chunked_encoding(req))
+	{
 		/* 6 should be more than enough */
 		char con_len[6];
 		snprintf(con_len, sizeof(con_len), "%d", content_len);
 
 		ret = httpd_send_header(req->sock, "Content-Length", con_len);
-		if (ret != kNoErr) {
+		if (ret != kNoErr)
+		{
 			httpd_d("Error in sending Content-Length");
 			return ret;
 		}
@@ -342,10 +365,13 @@ int httpd_send_response_301(httpd_request_t *req, char *location, const char
 		return kNoErr;
 	/* HTTP Head response does not require any content. It should
 	 * contain identical headers as per the corresponding GET request */
-	if (req->type != HTTPD_REQ_TYPE_HEAD) {
-		if (chunked_encoding(req)) {
+	if (req->type != HTTPD_REQ_TYPE_HEAD)
+	{
+		if (chunked_encoding(req))
+		{
 			ret = httpd_send_chunk(req->sock, content, content_len);
-			if (ret != kNoErr) {
+			if (ret != kNoErr)
+			{
 				httpd_d("Error in sending response content");
 				return ret;
 			}
@@ -353,7 +379,9 @@ int httpd_send_response_301(httpd_request_t *req, char *location, const char
 			ret = httpd_send_chunk(req->sock, NULL, 0);
 			if (ret != kNoErr)
 				httpd_d("Error in sending last chunk");
-		} else {
+		}
+		else
+		{
 			/* Send our data */
 			ret = httpd_send(req->sock, content, content_len);
 			if (ret != kNoErr)
@@ -365,109 +393,125 @@ int httpd_send_response_301(httpd_request_t *req, char *location, const char
 
 int httpd_send_all_header(httpd_request_t *req, const char *first_line, int body_lenth, const char *content_type)
 {
-  int ret;
-
-  /* Parse the header tags. This is valid only for GET or HEAD request */
-  if (req->type == HTTPD_REQ_TYPE_GET ||
-    req->type == HTTPD_REQ_TYPE_HEAD) {
-    ret = httpd_purge_headers(req->sock);
-
-    if (ret != kNoErr) {
-        httpd_d("Unable to purge headers");
-        return ret;
-    }
-  }
-
-  ret = httpd_send(req->sock, first_line, strlen(first_line));
-  if (ret != kNoErr) {
-      httpd_d("Error in sending the first line");
-      return ret;
-  }
-
-  /* Send default headers */
-  httpd_d("HTTP Req for URI %s", req->wsgi->uri);
-  if (req->wsgi->hdr_fields) {
-    ret = httpd_send_default_headers(req->sock, req->wsgi->hdr_fields);
-    if (ret != kNoErr) {
-      httpd_d("Error in sending default headers");
-      return ret;
-    }
-  }
-  /*send Connection heafer*/
-  ret = httpd_send(req->sock, http_header_keep_alive_ctrl, strlen(http_header_keep_alive_ctrl));
-  if (ret != kNoErr) {
-    httpd_d("Error in sending Connection");
-    return ret;
-  }
-  
-  ret = httpd_send_header(req->sock, "Content-Type", content_type);
-  if (ret != kNoErr) {
-    httpd_d("Error in sending Content-Type");
-    return ret;
-  }
-
-  /* Send Content-Length*/
-  /* 6 should be more than enough */
-  char con_len[6];
-  snprintf(con_len, sizeof(con_len), "%d", body_lenth);
-
-  ret = httpd_send_header(req->sock, "Content-Length", con_len);
-  if (ret != kNoErr) {
-    httpd_d("Error in sending Content-Length");
-    return ret;
-  }
-
-  httpd_send_crlf(req->sock);
-
-  return ret;
-}
-
-int httpd_send_response(httpd_request_t *req, const char *first_line,
-			char *content, int length, const char *content_type)
-{
 	int ret;
 
 	/* Parse the header tags. This is valid only for GET or HEAD request */
 	if (req->type == HTTPD_REQ_TYPE_GET ||
-		req->type == HTTPD_REQ_TYPE_HEAD) {
+		req->type == HTTPD_REQ_TYPE_HEAD)
+	{
 		ret = httpd_purge_headers(req->sock);
 
-		if (ret != kNoErr) {
+		if (ret != kNoErr)
+		{
 			httpd_d("Unable to purge headers");
 			return ret;
 		}
 	}
 
 	ret = httpd_send(req->sock, first_line, strlen(first_line));
-	if (ret != kNoErr) {
+	if (ret != kNoErr)
+	{
 		httpd_d("Error in sending the first line");
 		return ret;
 	}
 
 	/* Send default headers */
 	httpd_d("HTTP Req for URI %s", req->wsgi->uri);
-	if (req->wsgi->hdr_fields) {
+	if (req->wsgi->hdr_fields)
+	{
+		ret = httpd_send_default_headers(req->sock, req->wsgi->hdr_fields);
+		if (ret != kNoErr)
+		{
+			httpd_d("Error in sending default headers");
+			return ret;
+		}
+	}
+	/*send Connection heafer*/
+	ret = httpd_send(req->sock, http_header_keep_alive_ctrl, strlen(http_header_keep_alive_ctrl));
+	if (ret != kNoErr)
+	{
+		httpd_d("Error in sending Connection");
+		return ret;
+	}
+
+	ret = httpd_send_header(req->sock, "Content-Type", content_type);
+	if (ret != kNoErr)
+	{
+		httpd_d("Error in sending Content-Type");
+		return ret;
+	}
+
+	/* Send Content-Length*/
+	/* 6 should be more than enough */
+	char con_len[6];
+	snprintf(con_len, sizeof(con_len), "%d", body_lenth);
+
+	ret = httpd_send_header(req->sock, "Content-Length", con_len);
+	if (ret != kNoErr)
+	{
+		httpd_d("Error in sending Content-Length");
+		return ret;
+	}
+
+	httpd_send_crlf(req->sock);
+
+	return ret;
+}
+
+int httpd_send_response(httpd_request_t *req, const char *first_line,
+						char *content, int length, const char *content_type)
+{
+	int ret;
+
+	/* Parse the header tags. This is valid only for GET or HEAD request */
+	if (req->type == HTTPD_REQ_TYPE_GET ||
+		req->type == HTTPD_REQ_TYPE_HEAD)
+	{
+		ret = httpd_purge_headers(req->sock);
+
+		if (ret != kNoErr)
+		{
+			httpd_d("Unable to purge headers");
+			return ret;
+		}
+	}
+
+	ret = httpd_send(req->sock, first_line, strlen(first_line));
+	if (ret != kNoErr)
+	{
+		httpd_d("Error in sending the first line");
+		return ret;
+	}
+
+	/* Send default headers */
+	httpd_d("HTTP Req for URI %s", req->wsgi->uri);
+	if (req->wsgi->hdr_fields)
+	{
 		ret = httpd_send_default_headers(req->sock,
-				req->wsgi->hdr_fields);
-		if (ret != kNoErr) {
+										 req->wsgi->hdr_fields);
+		if (ret != kNoErr)
+		{
 			httpd_d("Error in sending default headers");
 			return ret;
 		}
 	}
 	ret = httpd_send_header(req->sock, "Content-Type", content_type);
-	if (ret != kNoErr) {
+	if (ret != kNoErr)
+	{
 		httpd_d("Error in sending Content-Type");
 		return ret;
 	}
 
 	/* Send Content-Length if non-chunked */
-	if (!chunked_encoding(req)) {
+	if (!chunked_encoding(req))
+	{
 		/* 6 should be more than enough */
 		char con_len[6];
 		snprintf(con_len, sizeof(con_len), "%d", length);
 
 		ret = httpd_send_header(req->sock, "Content-Length", con_len);
-		if (ret != kNoErr) {
+		if (ret != kNoErr)
+		{
 			httpd_d("Error in sending Content-Length");
 			return ret;
 		}
@@ -477,10 +521,13 @@ int httpd_send_response(httpd_request_t *req, const char *first_line,
 
 	/* HTTP Head response does not require any content. It should
 	 * contain identical headers as per the corresponding GET request */
-	if (req->type != HTTPD_REQ_TYPE_HEAD) {
-		if (chunked_encoding(req)) {
+	if (req->type != HTTPD_REQ_TYPE_HEAD)
+	{
+		if (chunked_encoding(req))
+		{
 			ret = httpd_send_chunk(req->sock, content, length);
-			if (ret != kNoErr) {
+			if (ret != kNoErr)
+			{
 				httpd_d("Error in sending response content");
 				return ret;
 			}
@@ -488,7 +535,9 @@ int httpd_send_response(httpd_request_t *req, const char *first_line,
 			ret = httpd_send_chunk(req->sock, NULL, 0);
 			if (ret != kNoErr)
 				httpd_d("Error in sending last chunk");
-		} else {
+		}
+		else
+		{
 			/* Send our data */
 			ret = httpd_send(req->sock, content, length);
 			if (ret != kNoErr)
@@ -503,24 +552,28 @@ int httpd_get_data(httpd_request_t *req, char *content, int length)
 	char *buf;
 
 	/* Is this condition required? */
-	if (req->body_nbytes >= HTTPD_MAX_MESSAGE - 2)
-		return -kInProgressErr;
-
+	//if (req->body_nbytes >= HTTPD_MAX_MESSAGE - 2)
+	//	return -kInProgressErr;
 
 	buf = malloc(HTTPD_MAX_MESSAGE);
-	if (!buf) {
+	if (!buf)
+	{
 		httpd_d("Failed to allocate memory for buffer");
 		return -kInProgressErr;
 	}
 
-	if (!req->hdr_parsed) {
+	if (!req->hdr_parsed)
+	{
 		ret = httpd_parse_hdr_tags(req, req->sock, buf,
-			HTTPD_MAX_MESSAGE);
+								   HTTPD_MAX_MESSAGE);
 
-		if (ret != kNoErr) {
+		if (ret != kNoErr)
+		{
 			httpd_d("Unable to parse header tags");
 			goto out;
-		} else {
+		}
+		else
+		{
 			httpd_d("Headers parsed successfully\r\n");
 			req->hdr_parsed = 1;
 		}
@@ -528,8 +581,9 @@ int httpd_get_data(httpd_request_t *req, char *content, int length)
 
 	/* handle here */
 	ret = httpd_recv(req->sock, content,
-			length, 0);
-	if (ret == -1) {
+					 length, 0);
+	if (ret == -1)
+	{
 		httpd_d("Failed to read POST data");
 		goto out;
 	}
@@ -537,7 +591,7 @@ int httpd_get_data(httpd_request_t *req, char *content, int length)
 	content[ret] = '\0';
 	req->remaining_bytes -= ret;
 	httpd_d("Read %d bytes and remaining %d bytes",
-		ret, req->remaining_bytes);
+			ret, req->remaining_bytes);
 out:
 	free(buf);
 	return req->remaining_bytes;
@@ -547,19 +601,20 @@ static int get_matching_chars(const char *s1, const char *s2)
 {
 	int match = 0;
 
-	if (s1 != NULL && s2 != NULL) {
+	if (s1 != NULL && s2 != NULL)
+	{
 		while (*s1++ == *s2++)
 			match++;
 	}
 	return match;
-
 }
 
 /* Function to skip the initial ipaddress/hostname path in a URL */
 char *httpd_skip_absolute_http_path(char *request)
 {
 #define ABS_HTTP_PATH "http://"
-	if (!strcmp(request, ABS_HTTP_PATH)) {
+	if (!strcmp(request, ABS_HTTP_PATH))
+	{
 		/* This is a full path request instead of just the absolute
 		 * path. Skip the initial, ipaddress/hostname part */
 		request += strlen(ABS_HTTP_PATH);
@@ -578,19 +633,21 @@ int httpd_validate_uri(char *req, const char *api, int flags)
 	unsigned char *c1 = (unsigned char *)req;
 	unsigned char *c2 = (unsigned char *)api;
 
-/* The 'api' contains our reference copy, the 'req' is sent by the user. It may
+	/* The 'api' contains our reference copy, the 'req' is sent by the user. It may
  * have additional characters in the front. Let us make sure if 'req' contains
  * exactly the same characters as the api first, then lets make exceptions if
  * any.
  */
-	while (*c2) {
+	while (*c2)
+	{
 		if (*c1 != *c2)
 			return -1;
 		c1++;
 		c2++;
 	}
 
-	if (flags & APP_HTTP_FLAGS_NO_EXACT_MATCH) {
+	if (flags & APP_HTTP_FLAGS_NO_EXACT_MATCH)
+	{
 		/* The contents match as much as the API length, so this is good
 		 * enough for us.
 		 */
@@ -608,14 +665,13 @@ int httpd_validate_uri(char *req, const char *api, int flags)
 
 	/* Skip over any trailing forward slashes */
 	while (*c1 && (*c1 == '/'))
-			c1++;
+		c1++;
 
 	if (*c1)
 		return -1;
 	else
 		return 0;
 }
-
 
 /* Check if there are any matching WSGI calls, and if so, execute them. */
 int httpd_wsgi(httpd_request_t *req_p)
@@ -629,40 +685,49 @@ int httpd_wsgi(httpd_request_t *req_p)
 	char *ptr, *request = httpd_skip_absolute_http_path(req_p->filename);
 
 	httpd_d("httpd_wsgi: looking for %s", request);
-        
+
 	/* IMP: fixme: Need to check for ? at the end or any forward slashes /
 	 * httpd_validate URI? */
-	for (index = 0; index < MAX_WSGI_HANDLERS; index++) {
+	for (index = 0; index < MAX_WSGI_HANDLERS; index++)
+	{
 		f = calls[index];
 		if (f == NULL)
 			continue;
-		if (f->http_flags & APP_HTTP_FLAGS_NO_EXACT_MATCH) {
+		if (f->http_flags & APP_HTTP_FLAGS_NO_EXACT_MATCH)
+		{
 			ret = get_matching_chars(request,
-						f->uri);
-			if (ret > cur_char_match) {
+									 f->uri);
+			if (ret > cur_char_match)
+			{
 				cur_char_match = ret;
 				match_index = index;
 			}
-		} else {
-			if (!strncmp(request, f->uri, strlen(f->uri))) {
+		}
+		else
+		{
+			if (!strncmp(request, f->uri, strlen(f->uri)))
+			{
 				found = 0;
 				ptr = request;
 				ptr += strlen(f->uri);
 				/* '?' terminates a filename */
 				if (*ptr == '?')
 					found = 1;
-				else {
+				else
+				{
 					/* Check for any number of
 					 * forward slashes */
-					while (*ptr && (*ptr == '/')) {
+					while (*ptr && (*ptr == '/'))
+					{
 						ptr++;
 					}
 					if (!*ptr)
 						found = 1;
 				}
-				if (found) {
+				if (found)
+				{
 					httpd_d("Anchored pattern match: %s",
-						f->uri);
+							f->uri);
 					match_index = index;
 					/* Break if there is an exact match */
 					break;
@@ -675,7 +740,8 @@ int httpd_wsgi(httpd_request_t *req_p)
 
 	/* Match found. So map the wsgi to this request */
 	req_p->wsgi = calls[match_index];
-	switch (req_p->type) {
+	switch (req_p->type)
+	{
 	case HTTPD_REQ_TYPE_HEAD:
 	case HTTPD_REQ_TYPE_GET:
 		if (calls[match_index]->get_handler)
@@ -709,7 +775,6 @@ int httpd_wsgi(httpd_request_t *req_p)
 		return HTTPD_DONE;
 	else
 		return err;
-
 }
 
 /* Initialise the WSGI handler data structures */

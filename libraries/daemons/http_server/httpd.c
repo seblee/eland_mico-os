@@ -38,8 +38,7 @@
 #include "SocketUtils.h"
 #include "base64.h"
 
-typedef enum
-{
+typedef enum {
     HTTPD_INACTIVE = 0,
     HTTPD_INIT_DONE,
     HTTPD_THREAD_RUNNING,
@@ -88,24 +87,24 @@ static int http_sockfd;
 int client_sockfd;
 static bool https_active;
 
-bool httpd_is_https_active( )
+bool httpd_is_https_active()
 {
     return https_active;
 }
 
-static int net_get_sock_error( int sock )
+static int net_get_sock_error(int sock)
 {
     return -kInProgressErr;
 }
 
-static int httpd_close_sockets( )
+static int httpd_close_sockets()
 {
     int ret, status = kNoErr;
 
-    if ( http_sockfd != -1 )
+    if (http_sockfd != -1)
     {
-        ret = close( http_sockfd );
-        if ( ret != 0 )
+        ret = close(http_sockfd);
+        if (ret != 0)
         {
             httpd_d("failed to close http socket: %d", net_get_sock_error(http_sockfd));
             status = -kInProgressErr;
@@ -113,10 +112,10 @@ static int httpd_close_sockets( )
         http_sockfd = -1;
     }
 
-    if ( client_sockfd != -1 )
+    if (client_sockfd != -1)
     {
-        ret = close( client_sockfd );
-        if ( ret != 0 )
+        ret = close(client_sockfd);
+        if (ret != 0)
         {
             httpd_d("Failed to close client socket: %d", net_get_sock_error(client_sockfd));
             status = -kInProgressErr;
@@ -127,54 +126,55 @@ static int httpd_close_sockets( )
     return status;
 }
 
-static void httpd_suspend_thread( bool warn )
+static void httpd_suspend_thread(bool warn)
 {
-    if ( warn )
-    {
-        httpd_d("Suspending thread");
-    } else
+    if (warn)
     {
         httpd_d("Suspending thread");
     }
-    httpd_close_sockets( );
+    else
+    {
+        httpd_d("Suspending thread");
+    }
+    httpd_close_sockets();
     httpd_state = HTTPD_THREAD_SUSPENDED;
-    mico_rtos_suspend_thread( NULL );
+    mico_rtos_suspend_thread(NULL);
 }
 
-static int httpd_setup_new_socket( int port )
+static int httpd_setup_new_socket(int port)
 {
     int one = 1;
     int status, sockfd;
     struct sockaddr_in addr_listen;
 
     /* create listening TCP socket */
-    sockfd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
-    if ( sockfd < 0 )
+    sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sockfd < 0)
     {
-        status = net_get_sock_error( sockfd );
+        status = net_get_sock_error(sockfd);
         httpd_d("Socket creation failed: Port: %d Status: %d", port, status);
         return status;
     }
 
-    setsockopt( sockfd, SOL_SOCKET, SO_REUSEADDR, (char *) &one, sizeof(one) );
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&one, sizeof(one));
 
     addr_listen.sin_family = AF_INET;
     addr_listen.sin_addr.s_addr = INADDR_ANY;
-    addr_listen.sin_port = htons( port );
+    addr_listen.sin_port = htons(port);
 
     /* bind insocket */
-    status = bind( sockfd, (struct sockaddr *) &addr_listen, sizeof(addr_listen) );
-    if ( status < 0 )
+    status = bind(sockfd, (struct sockaddr *)&addr_listen, sizeof(addr_listen));
+    if (status < 0)
     {
-        status = net_get_sock_error( sockfd );
+        status = net_get_sock_error(sockfd);
         httpd_d("Failed to bind socket on port: %d Status: %d", status, port);
         return status;
     }
 
-    status = listen( sockfd, HTTPD_MAX_BACKLOG_CONN );
-    if ( status < 0 )
+    status = listen(sockfd, HTTPD_MAX_BACKLOG_CONN);
+    if (status < 0)
     {
-        status = net_get_sock_error( sockfd );
+        status = net_get_sock_error(sockfd);
         httpd_d("Failed to listen on port %d: %d.", port, status);
         return status;
     }
@@ -183,10 +183,10 @@ static int httpd_setup_new_socket( int port )
     return sockfd;
 }
 
-static int httpd_setup_main_sockets( )
+static int httpd_setup_main_sockets()
 {
-    http_sockfd = httpd_setup_new_socket( HTTP_PORT );
-    if ( http_sockfd < 0 )
+    http_sockfd = httpd_setup_new_socket(HTTP_PORT);
+    if (http_sockfd < 0)
     {
         /* Socket creation failed */
         return http_sockfd;
@@ -195,40 +195,41 @@ static int httpd_setup_main_sockets( )
     return kNoErr;
 }
 
-static int httpd_select( int max_sock, const fd_set *readfds,
-                         fd_set *active_readfds,
-                         int timeout_secs )
+static int httpd_select(int max_sock, const fd_set *readfds,
+                        fd_set *active_readfds,
+                        int timeout_secs)
 {
     int activefds_cnt;
     struct timeval timeout;
 
     fd_set local_readfds;
 
-    if ( timeout_secs >= 0 )
+    if (timeout_secs >= 0)
         timeout.tv_sec = timeout_secs;
     timeout.tv_usec = 0;
 
-    memcpy( &local_readfds, readfds, sizeof(fd_set) );
+    memcpy(&local_readfds, readfds, sizeof(fd_set));
     httpd_d("WAITING for activity");
 
-  activefds_cnt = select(max_sock + 1, &local_readfds, NULL, NULL, timeout_secs >= 0 ? &timeout : NULL);
-  if (activefds_cnt < 0) {
+    activefds_cnt = select(max_sock + 1, &local_readfds, NULL, NULL, timeout_secs >= 0 ? &timeout : NULL);
+    if (activefds_cnt < 0)
+    {
         httpd_d("Select failed: %d", timeout_secs);
-        httpd_suspend_thread( true );
+        httpd_suspend_thread(true);
     }
 
-    if ( httpd_stop_req )
+    if (httpd_stop_req)
     {
         httpd_d("HTTPD stop request received");
         httpd_stop_req = FALSE;
-        httpd_suspend_thread( false );
+        httpd_suspend_thread(false);
     }
 
-    if ( activefds_cnt )
+    if (activefds_cnt)
     {
         /* Update users copy of fd_set only if he wants */
-        if ( active_readfds )
-            memcpy( active_readfds, &local_readfds, sizeof(fd_set) );
+        if (active_readfds)
+            memcpy(active_readfds, &local_readfds, sizeof(fd_set));
         return activefds_cnt;
     }
 
@@ -237,27 +238,27 @@ static int httpd_select( int max_sock, const fd_set *readfds,
     return HTTPD_TIMEOUT_EVENT;
 }
 
-static int httpd_accept_client_socket( const fd_set *active_readfds )
+static int httpd_accept_client_socket(const fd_set *active_readfds)
 {
     int main_sockfd = -1;
     struct sockaddr addr_from;
     socklen_t addr_from_len;
 
-    if ( FD_ISSET( http_sockfd, active_readfds ) )
+    if (FD_ISSET(http_sockfd, active_readfds))
     {
         main_sockfd = http_sockfd;
         https_active = FALSE;
     }
-    
+
     addr_from_len = sizeof(addr_from);
-    
-    client_sockfd = accept( main_sockfd, &addr_from, &addr_from_len );
-    if ( client_sockfd < 0 )
+
+    client_sockfd = accept(main_sockfd, &addr_from, &addr_from_len);
+    if (client_sockfd < 0)
     {
         httpd_d("net_accept client socket failed %d.", client_sockfd);
         return -kInProgressErr;
     }
-    
+
     /*
      * Enable TCP Keep-alive for accepted client connection
      *  -- By enabling this feature TCP sends probe packet if there is
@@ -272,89 +273,90 @@ static int httpd_accept_client_socket( const fd_set *active_readfds )
      * be in-responsive forever.
      */
     int optval = true;
-    if ( setsockopt( client_sockfd, SOL_SOCKET, 0x0008, &optval, sizeof(optval) ) == -1 )
+    if (setsockopt(client_sockfd, SOL_SOCKET, 0x0008, &optval, sizeof(optval)) == -1)
     {
         httpd_d("Unsupported option SO_KEEPALIVE: %d", net_get_sock_error(client_sockfd));
     }
-    
+
     /* TCP Keep-alive idle/inactivity timeout is 10 seconds */
     optval = 10;
-    if ( setsockopt( client_sockfd, IPPROTO_TCP, 0x03, &optval, sizeof(optval) ) == -1 )
+    if (setsockopt(client_sockfd, IPPROTO_TCP, 0x03, &optval, sizeof(optval)) == -1)
     {
         httpd_d("Unsupported option TCP_KEEPIDLE: %d", net_get_sock_error(client_sockfd));
     }
-    
+
     /* TCP Keep-alive retry count is 5 */
     optval = 5;
-    if ( setsockopt( client_sockfd, IPPROTO_TCP, 0x05, &optval, sizeof(optval) ) == -1 )
+    if (setsockopt(client_sockfd, IPPROTO_TCP, 0x05, &optval, sizeof(optval)) == -1)
     {
         httpd_d("Unsupported option TCP_KEEPCNT: %d", net_get_sock_error(client_sockfd));
     }
-    
+
     /* TCP Keep-alive retry interval (in case no response for probe
      * packet) is 1 second.
      */
     optval = 1;
-    if ( setsockopt( client_sockfd, IPPROTO_TCP, 0x04, &optval, sizeof(optval) ) == -1 )
+    if (setsockopt(client_sockfd, IPPROTO_TCP, 0x04, &optval, sizeof(optval)) == -1)
     {
         httpd_d("Unsupported option TCP_KEEPINTVL: %d", net_get_sock_error(client_sockfd));
     }
 
-    httpd_d("connecting %d to %d.", client_sockfd, addr_from.s_port);
-    
+    //httpd_d("connecting %d to %d.", client_sockfd, addr_from.s_port);
+
     return kNoErr;
 }
 
-static void httpd_handle_client_connection( const fd_set *active_readfds )
+static void httpd_handle_client_connection(const fd_set *active_readfds)
 {
     int activefds_cnt, status;
     fd_set readfds;
 
-    if ( httpd_stop_req )
+    if (httpd_stop_req)
     {
         httpd_d("HTTPD stop request received");
         httpd_stop_req = FALSE;
-        httpd_suspend_thread( false );
+        httpd_suspend_thread(false);
     }
 
-    status = httpd_accept_client_socket( active_readfds );
-    if ( status != kNoErr )
+    status = httpd_accept_client_socket(active_readfds);
+    if (status != kNoErr)
         return;
 
     httpd_d("Client socket accepted: %d", client_sockfd);
-    FD_ZERO( &readfds );
-    FD_SET( client_sockfd, &readfds );
+    FD_ZERO(&readfds);
+    FD_SET(client_sockfd, &readfds);
 
-    while ( 1 )
+    while (1)
     {
-        if ( httpd_stop_req )
+        if (httpd_stop_req)
         {
             httpd_d("HTTPD stop request received");
             httpd_stop_req = FALSE;
-            httpd_suspend_thread( false );
+            httpd_suspend_thread(false);
         }
 
         httpd_d("Waiting on client socket");
-        activefds_cnt = httpd_select( client_sockfd, &readfds, NULL, HTTPD_CLIENT_SOCK_TIMEOUT );
+        activefds_cnt = httpd_select(client_sockfd, &readfds, NULL, HTTPD_CLIENT_SOCK_TIMEOUT);
 
-        if ( httpd_stop_req )
+        if (httpd_stop_req)
         {
             httpd_d("HTTPD stop request received");
             httpd_stop_req = FALSE;
-            httpd_suspend_thread( false );
+            httpd_suspend_thread(false);
         }
 
-        if ( activefds_cnt == HTTPD_TIMEOUT_EVENT )
+        if (activefds_cnt == HTTPD_TIMEOUT_EVENT)
         {
             /* Timeout has occured */
-            httpd_d("Client socket timeout occurred. " "Force closing socket");
+            httpd_d("Client socket timeout occurred. "
+                    "Force closing socket");
 
-            status = close( client_sockfd );
-            if ( status != kNoErr )
+            status = close(client_sockfd);
+            if (status != kNoErr)
             {
-                status = net_get_sock_error( client_sockfd );
+                status = net_get_sock_error(client_sockfd);
                 httpd_d("Failed to close socket %d", status);
-                httpd_suspend_thread( true );
+                httpd_suspend_thread(true);
             }
 
             client_sockfd = -1;
@@ -373,8 +375,8 @@ static void httpd_handle_client_connection( const fd_set *active_readfds )
          */
         /* FIXME: remove this memset if all is working well */
         /* memset(&httpd_message_in[0], 0, sizeof(httpd_message_in)); */
-        status = httpd_handle_message( client_sockfd );
-        if ( status == kNoErr )
+        status = httpd_handle_message(client_sockfd);
+        if (status == kNoErr)
         {
             /* The handlers are expected more data on the
              socket */
@@ -384,12 +386,12 @@ static void httpd_handle_client_connection( const fd_set *active_readfds )
         /* Either there was some error or everything went well */
         httpd_d("Close socket %d.  %s: %d", client_sockfd, status == HTTPD_DONE ? "Handler done" : "Handler failed", status);
 
-        status = close( client_sockfd );
-        if ( status != kNoErr )
+        status = close(client_sockfd);
+        if (status != kNoErr)
         {
-            status = net_get_sock_error( client_sockfd );
+            status = net_get_sock_error(client_sockfd);
             httpd_d("Failed to close socket %d", status);
-            httpd_suspend_thread( true );
+            httpd_suspend_thread(true);
         }
         client_sockfd = -1;
 
@@ -397,25 +399,25 @@ static void httpd_handle_client_connection( const fd_set *active_readfds )
     }
 }
 
-static void httpd_main( mico_thread_arg_t arg )
+static void httpd_main(mico_thread_arg_t arg)
 {
-    UNUSED_PARAMETER( arg );
+    UNUSED_PARAMETER(arg);
     int status, max_sockfd = -1;
     fd_set readfds, active_readfds;
 
-    status = httpd_setup_main_sockets( );
-    if ( status != kNoErr )
-        httpd_suspend_thread( true );
+    status = httpd_setup_main_sockets();
+    if (status != kNoErr)
+        httpd_suspend_thread(true);
 
-    FD_ZERO( &readfds );
-    FD_SET( http_sockfd, &readfds );
+    FD_ZERO(&readfds);
+    FD_SET(http_sockfd, &readfds);
     max_sockfd = http_sockfd;
 
-    while ( 1 )
+    while (1)
     {
         httpd_d("Waiting on main socket");
-        httpd_select( max_sockfd, &readfds, &active_readfds, -1 );
-        httpd_handle_client_connection( &active_readfds );
+        httpd_select(max_sockfd, &readfds, &active_readfds, -1);
+        httpd_handle_client_connection(&active_readfds);
     }
 
     /*
@@ -425,7 +427,7 @@ static void httpd_main( mico_thread_arg_t arg )
      */
 }
 
-static inline int tcp_local_connect( int *sockfd )
+static inline int tcp_local_connect(int *sockfd)
 {
     uint16_t port;
     int retry_cnt = 3;
@@ -433,16 +435,16 @@ static inline int tcp_local_connect( int *sockfd )
     httpd_d("Doing local connect for shutting down server\n\r");
 
     *sockfd = -1;
-    while ( retry_cnt-- )
+    while (retry_cnt--)
     {
-        *sockfd = socket( AF_INET, SOCK_STREAM, 0 );
-        if ( *sockfd >= 0 )
+        *sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (*sockfd >= 0)
             break;
         /* Wait some time to allow some sockets to get released */
-        mico_thread_msleep( 1000 );
+        mico_thread_msleep(1000);
     }
 
-    if ( *sockfd < 0 )
+    if (*sockfd < 0)
     {
         httpd_d("Unable to create socket to stop server");
         return -kInProgressErr;
@@ -452,17 +454,17 @@ static inline int tcp_local_connect( int *sockfd )
 
     char *host = "127.0.0.1";
     struct sockaddr_in addr;
-    memset( &addr, 0, sizeof(struct sockaddr_in) );
+    memset(&addr, 0, sizeof(struct sockaddr_in));
 
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr( host );
-    addr.sin_port = htons( port );
+    addr.sin_addr.s_addr = inet_addr(host);
+    addr.sin_port = htons(port);
 
     httpd_d("local connecting ...");
-    if ( connect( *sockfd, (struct sockaddr *) &addr, sizeof(addr) ) != 0 )
+    if (connect(*sockfd, (struct sockaddr *)&addr, sizeof(addr)) != 0)
     {
         httpd_d("Server close error. tcp connect failed %s:%d", host, port);
-        close( *sockfd );
+        close(*sockfd);
         *sockfd = 0;
         return -kInProgressErr;
     }
@@ -475,10 +477,10 @@ static inline int tcp_local_connect( int *sockfd )
     return kNoErr;
 }
 
-static int httpd_signal_and_wait_for_halt( )
+static int httpd_signal_and_wait_for_halt()
 {
     const int total_wait_time_ms = 1000 * 20; /* 20 seconds */
-    const int check_interval_ms = 100; /* 100 ms */
+    const int check_interval_ms = 100;        /* 100 ms */
 
     int num_iterations = total_wait_time_ms / check_interval_ms;
 
@@ -487,76 +489,77 @@ static int httpd_signal_and_wait_for_halt( )
 
     /* Do a dummy local connect to wakeup the httpd thread */
     int sockfd;
-    int rv = tcp_local_connect( &sockfd );
-    if ( rv != kNoErr )
+    int rv = tcp_local_connect(&sockfd);
+    if (rv != kNoErr)
         return rv;
 
-    while ( httpd_state != HTTPD_THREAD_SUSPENDED && num_iterations-- )
+    while (httpd_state != HTTPD_THREAD_SUSPENDED && num_iterations--)
     {
-        mico_thread_msleep( check_interval_ms );
+        mico_thread_msleep(check_interval_ms);
     }
 
-    close( sockfd );
-    if ( httpd_state == HTTPD_THREAD_SUSPENDED )
+    close(sockfd);
+    if (httpd_state == HTTPD_THREAD_SUSPENDED)
         return kNoErr;
 
-    httpd_d("Timed out waiting for httpd to stop. " "Force closed temporary socket");
+    httpd_d("Timed out waiting for httpd to stop. "
+            "Force closed temporary socket");
 
     httpd_stop_req = FALSE;
     return -kInProgressErr;
 }
 
-static int httpd_thread_cleanup( void )
+static int httpd_thread_cleanup(void)
 {
     int status = kNoErr;
 
-    switch ( httpd_state )
+    switch (httpd_state)
     {
-        case HTTPD_INIT_DONE:
-            /*
+    case HTTPD_INIT_DONE:
+        /*
              * We have no threads, no sockets to close.
              */
-            break;
-        case HTTPD_THREAD_RUNNING:
-            status = httpd_signal_and_wait_for_halt( );
-            if ( status != kNoErr )
-                httpd_d("Unable to stop thread. Force killing it.");
-            /* No break here on purpose */
-        case HTTPD_THREAD_SUSPENDED:
-            status = mico_rtos_delete_thread( &httpd_main_thread );
-            if ( status != kNoErr )
-                httpd_d("Failed to delete thread.");
-            status = httpd_close_sockets( );
-            httpd_state = HTTPD_INIT_DONE;
-            break;
-        default:
-            return -kInProgressErr;
+        break;
+    case HTTPD_THREAD_RUNNING:
+        status = httpd_signal_and_wait_for_halt();
+        if (status != kNoErr)
+            httpd_d("Unable to stop thread. Force killing it.");
+        /* No break here on purpose */
+    case HTTPD_THREAD_SUSPENDED:
+        status = mico_rtos_delete_thread(&httpd_main_thread);
+        if (status != kNoErr)
+            httpd_d("Failed to delete thread.");
+        status = httpd_close_sockets();
+        httpd_state = HTTPD_INIT_DONE;
+        break;
+    default:
+        return -kInProgressErr;
     }
 
     return status;
 }
 
-int httpd_is_running( void )
+int httpd_is_running(void)
 {
     return (httpd_state == HTTPD_THREAD_RUNNING);
 }
 
 /* This pairs with httpd_stop() */
-int httpd_start( void )
+int httpd_start(void)
 {
     int status;
 
-    if ( httpd_state != HTTPD_INIT_DONE )
+    if (httpd_state != HTTPD_INIT_DONE)
     {
         httpd_d("Already started");
         return kNoErr;
     }
 
-    status = mico_rtos_create_thread( &httpd_main_thread, MICO_APPLICATION_PRIORITY, "httpd",
-                                      httpd_main,
-                                      http_server_thread_stack_size, 0 );
+    status = mico_rtos_create_thread(&httpd_main_thread, MICO_APPLICATION_PRIORITY, "httpd",
+                                     httpd_main,
+                                     http_server_thread_stack_size, 0);
 
-    if ( status != kNoErr )
+    if (status != kNoErr)
     {
         httpd_d("Failed to create httpd thread: %d", status);
         return -kInProgressErr;
@@ -567,20 +570,20 @@ int httpd_start( void )
 }
 
 /* This pairs with httpd_start() */
-int httpd_stop( void )
+int httpd_stop(void)
 {
-    return httpd_thread_cleanup( );
+    return httpd_thread_cleanup();
 }
 
 /* This pairs with httpd_init() */
-int httpd_shutdown( void )
+int httpd_shutdown(void)
 {
     int ret;
 
     httpd_d("Shutting down.");
 
-    ret = httpd_thread_cleanup( );
-    if ( ret != kNoErr )
+    ret = httpd_thread_cleanup();
+    if (ret != kNoErr)
         httpd_d("Thread cleanup failed");
 
     httpd_state = HTTPD_INACTIVE;
@@ -589,11 +592,11 @@ int httpd_shutdown( void )
 }
 
 /* This pairs with httpd_shutdown() */
-int httpd_init( )
+int httpd_init()
 {
     int status;
 
-    if ( httpd_state != HTTPD_INACTIVE )
+    if (httpd_state != HTTPD_INACTIVE)
         return kNoErr;
 
     httpd_d("Initializing");
@@ -601,15 +604,15 @@ int httpd_init( )
     client_sockfd = -1;
     http_sockfd = -1;
 
-    status = httpd_wsgi_init( );
-    if ( status != kNoErr )
+    status = httpd_wsgi_init();
+    if (status != kNoErr)
     {
         httpd_d("Failed to initialize WSGI!");
         return status;
     }
 
-    status = httpd_ssi_init( );
-    if ( status != kNoErr )
+    status = httpd_ssi_init();
+    if (status != kNoErr)
     {
         httpd_d("Failed to initialize SSI!");
         return status;
@@ -620,7 +623,7 @@ int httpd_init( )
     return kNoErr;
 }
 
-int httpd_use_tls_certificates( const httpd_tls_certs_t *tls_certs )
+int httpd_use_tls_certificates(const httpd_tls_certs_t *tls_certs)
 {
 
     httpd_d("HTTPS is not enabled in server. ");
@@ -631,31 +634,31 @@ static char *auth_str = NULL;
 
 int httpd_auth_init(char *name, char *passwd)
 {
-  int len, outlen;
-  char *src_str;
-  
-  len = strlen(name) + strlen(passwd) + 2;
-  
-  if (auth_str)
-    free(auth_str);
-  
-  auth_str = NULL;
-  if (strlen(name) == 0 && strlen(passwd) == 0) // no username and password
-    return 0;
-  
-  src_str = malloc(len);
-  if (src_str == 0)
-    return -1;
-  
-  sprintf(src_str, "%s:%s", name, passwd);
-  auth_str = (char *)base64_encode((unsigned char const *)src_str, strlen(src_str), &outlen); 
-  len = strlen(auth_str);
-  auth_str[len-1] = 0;
-  free(src_str);
-  return kNoErr;
+    int len, outlen;
+    char *src_str;
+
+    len = strlen(name) + strlen(passwd) + 2;
+
+    if (auth_str)
+        free(auth_str);
+
+    auth_str = NULL;
+    if (strlen(name) == 0 && strlen(passwd) == 0) // no username and password
+        return 0;
+
+    src_str = malloc(len);
+    if (src_str == 0)
+        return -1;
+
+    sprintf(src_str, "%s:%s", name, passwd);
+    auth_str = (char *)base64_encode((unsigned char const *)src_str, strlen(src_str), &outlen);
+    len = strlen(auth_str);
+    auth_str[len - 1] = 0;
+    free(src_str);
+    return kNoErr;
 }
 
-char *get_httpd_auth( void )
+char *get_httpd_auth(void)
 {
-  return auth_str;
+    return auth_str;
 }

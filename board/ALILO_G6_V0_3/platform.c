@@ -33,10 +33,9 @@
 #include "common.h"
 #include "mico_platform.h"
 
-#include "platform.h"
 #include "button.h"
 #include "moc_api.h"
-
+#include "platform.h"
 #ifdef USE_MiCOKit_EXT
 #include "MiCOKit_EXT/micokit_ext.h"
 #endif
