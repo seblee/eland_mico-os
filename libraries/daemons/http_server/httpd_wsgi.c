@@ -433,6 +433,12 @@ int httpd_send_all_header(httpd_request_t *req, const char *first_line, int body
 		httpd_d("Error in sending Connection");
 		return ret;
 	}
+	ret = httpd_send_header(req->sock, "Access-Control-Allow-Origin", "*");
+	if (ret != kNoErr)
+	{
+		httpd_d("Error in sending Content-Type");
+		return ret;
+	}
 
 	ret = httpd_send_header(req->sock, "Content-Type", content_type);
 	if (ret != kNoErr)
@@ -440,7 +446,6 @@ int httpd_send_all_header(httpd_request_t *req, const char *first_line, int body
 		httpd_d("Error in sending Content-Type");
 		return ret;
 	}
-
 	/* Send Content-Length*/
 	/* 6 should be more than enough */
 	char con_len[6];
