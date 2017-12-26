@@ -303,7 +303,6 @@
  *
  ******************************************************************************/
 
-
 /** @defgroup MICO_Middleware_Interface  MiCO Middleware APIs
   * @brief Provide MiCO Middleware Programming APIs.
   * @{
@@ -317,7 +316,6 @@
   * @brief Provide MiCO HTTP Web Server APIs.
   * @{
   */
-
 
 #ifndef _HTTPD_H_
 #define _HTTPD_H_
@@ -335,7 +333,7 @@
  * correct. This is required when the registered URI is /nodes/ while the
  * handler wishes to match with /nodes/0/, /nodes/1/ etc.
  */
-#define APP_HTTP_FLAGS_NO_EXACT_MATCH   1
+#define APP_HTTP_FLAGS_NO_EXACT_MATCH 1
 
 /** This REQ_TYPE should not be used externally. */
 #define HTTPD_REQ_TYPE_UNKNOWN 0
@@ -359,7 +357,8 @@
 #define HTTPD_REQ_TYPE_HEAD 16
 
 /** HTTPD Error Codes */
-enum wm_httpd_errno {
+enum wm_httpd_errno
+{
 	WM_E_HTTPD_ERRNO_BASE = 0,
 	/** Error parsing filename in HTTP Header */
 	WM_E_HTTPD_HDR_FNAME,
@@ -425,7 +424,6 @@ enum wm_httpd_errno {
  */
 #define HTTPD_MAX_URI_LENGTH 64
 
-
 /** Maximum length of the value portion of a tag/value pair
  *
  *  If this length is exceeded, the value will be truncated to this length and
@@ -453,26 +451,28 @@ enum wm_httpd_errno {
  */
 #define HTTPD_MAX_CONTENT_TYPE_LENGTH 128
 
-#define ISO_nl      0x0a
-#define ISO_cr      0x0d
-#define ISO_tab     0x09
-#define ISO_space   0x20
-#define ISO_bang    0x21
-#define ISO_quot    0x22
+#define ISO_nl 0x0a
+#define ISO_cr 0x0d
+#define ISO_tab 0x09
+#define ISO_space 0x20
+#define ISO_bang 0x21
+#define ISO_quot 0x22
 #define ISO_percent 0x25
-#define ISO_period  0x2e
-#define ISO_slash   0x2f
-#define ISO_colon   0x3a
+#define ISO_period 0x2e
+#define ISO_slash 0x2f
+#define ISO_colon 0x3a
 
-#define HTTPD_JSON_ERR_MSG    "{\"error_msg\":\"%s\"}"
-#define HTTPD_JSON_RETURN_MSG  "{\"return_msg\":\"%s\"}"
-#define HTTPD_JSON_ERROR  "{\"error\": -1}"
+#define HTTPD_JSON_ERR_MSG "{\"error_msg\":\"%s\"}"
+#define HTTPD_JSON_RETURN_MSG "{\"return_msg\":\"%s\"}"
+#define HTTPD_JSON_ERROR "{\"error\": -1}"
 #define HTTPD_JSON_SUCCESS "{\"success\": 0}"
-#define HTTPD_TEXT_ERROR  "error -1\r\n"
+#define HTTPD_TEXT_ERROR "error -1\r\n"
 #define HTTPD_TEXT_SUCCESS "success\r\n"
 
 /** Content-Type: application/json */
 #define HTTP_CONTENT_JSON_STR "application/json"
+/** Content-Type: application/octet-stream */
+#define HTTP_CONTENT_OCTET_STREAM "application/octet-stream"
 /** Content-Type: text/xml */
 #define HTTP_CONTENT_XML_STR "text/xml"
 /** Content-Type: text/hxml */
@@ -514,18 +514,20 @@ enum wm_httpd_errno {
 /** httpd_useragent_t reports the product and version of the client accessing
  * the httpd.
  */
-typedef struct  {
+typedef struct
+{
 	/** Product of the client */
-	char product[HTTPD_MAX_VAL_LENGTH + 1];	/* +1 for null termination */
+	char product[HTTPD_MAX_VAL_LENGTH + 1]; /* +1 for null termination */
 	/** Version of the client */
-	char version[HTTPD_MAX_VAL_LENGTH + 1];	/* +1 for null termination */
+	char version[HTTPD_MAX_VAL_LENGTH + 1]; /* +1 for null termination */
 } httpd_useragent_t;
 
 struct httpd_wsgi_call;
 
 /** Request structure representing various properties of an HTTP request
  */
-typedef struct {
+typedef struct
+{
 	/** HTTP Request type: GET, HEAD, POST, PUT, DELETE */
 	int type;
 	/** The incoming URI */
@@ -547,6 +549,8 @@ typedef struct {
 	httpd_useragent_t agent;
 	/** The content type of the incoming HTTP Request */
 	char content_type[HTTPD_MAX_CONTENT_TYPE_LENGTH];
+	/** The hash of ota.bin incoming HTTP Request */
+	char hash[33];
 	/** True if "If-None-Match" header is present in the incoming
 	 * HTTP Request */
 	bool if_none_match;
@@ -672,7 +676,8 @@ int httpd_send_chunk_begin(int sock, int size);
 /** Structure representing a WSGI handler
  *
  */
-struct httpd_wsgi_call {
+struct httpd_wsgi_call
+{
 	/** URI of the WSGI */
 	const char *uri;
 	/** Indicator for HTTP headers to be sent in the response*/
@@ -680,15 +685,14 @@ struct httpd_wsgi_call {
 	/** Flag indicating if exact match of the URI is required or not */
 	int http_flags;
 	/** HTTP GET or HEAD Handler */
-	int (*get_handler) (httpd_request_t *req);
+	int (*get_handler)(httpd_request_t *req);
 	/** HTTP POST Handler */
-	int (*set_handler) (httpd_request_t *req);
+	int (*set_handler)(httpd_request_t *req);
 	/** HTTP PUT Handler */
-	int (*put_handler) (httpd_request_t *req);
+	int (*put_handler)(httpd_request_t *req);
 	/** HTTP DELETE Handler */
-	int (*delete_handler) (httpd_request_t *req);
+	int (*delete_handler)(httpd_request_t *req);
 };
-
 
 /** @brief  Register a WSGI handler
  *
@@ -718,7 +722,7 @@ int httpd_register_wsgi_handler(struct httpd_wsgi_call *wsgi_call);
  *  @return -WM_FAIL           :otherwise
  */
 int httpd_register_wsgi_handlers(struct httpd_wsgi_call *wsgi_call_list,
-					int handler_cnt);
+								 int handler_cnt);
 /** @brief  Unregister a WSGI handler
  *
  *  @note  This call unregisters a WSGI handler.
@@ -742,7 +746,7 @@ int httpd_unregister_wsgi_handler(struct httpd_wsgi_call *wsgi_call);
  *  @return  -WM_FAIL             :otherwise
  */
 int httpd_unregister_wsgi_handlers(struct httpd_wsgi_call *wsgi_call_list,
-					int handler_cnt);
+								   int handler_cnt);
 
 /** @brief  Maximum length of virtual SSI arguments
  *
@@ -793,16 +797,16 @@ int httpd_unregister_wsgi_handlers(struct httpd_wsgi_call *wsgi_call_list,
  *  final chunk i.e. they should not invoke httpd_send_chunk with a length of 0.
  *
  */
-typedef int (*httpd_ssifunction) (const httpd_request_t *req, const char *args,
-				  int sock, char *scratch);
-
+typedef int (*httpd_ssifunction)(const httpd_request_t *req, const char *args,
+								 int sock, char *scratch);
 
 /** @brief  Opaque structure representing a virtual SSI handler
  *
  *  @note  Users should use the macro \ref HTTPD_SSI_CALL to initialize this struct
  *  statically.
  */
-struct httpd_ssi_call {
+struct httpd_ssi_call
+{
 	/** The name of the function, used in the script file */
 	const char *name;
 	/** The pointer to the function that implements the handler */
@@ -868,7 +872,8 @@ int httpd_cli_init(void);
 
 /** HTTP Content types
  */
-enum http_content_type {
+enum http_content_type
+{
 	/** Content-Type: text/plain */
 	HTTP_CONTENT_PLAIN_TEXT,
 	/** Content-Type: application/json */
@@ -885,24 +890,24 @@ enum http_content_type {
  */
 typedef enum {
 	/** "Server: Marvell-WM\r\n" */
-	HTTPD_HDR_ADD_SERVER                    = 0x0001,
+	HTTPD_HDR_ADD_SERVER = 0x0001,
 	/** "Connection: keep-alive\r\n" */
-	HTTPD_HDR_ADD_CONN_KEEP_ALIVE           = 0x0002,
+	HTTPD_HDR_ADD_CONN_KEEP_ALIVE = 0x0002,
 	/** "Connection: close\r\n" */
-	HTTPD_HDR_ADD_CONN_CLOSE                = 0x0004,
+	HTTPD_HDR_ADD_CONN_CLOSE = 0x0004,
 	/** "Transfer-Encoding: chunked\r\n" */
-	HTTPD_HDR_ADD_TYPE_CHUNKED              = 0x0008,
+	HTTPD_HDR_ADD_TYPE_CHUNKED = 0x0008,
 	/** "Cache-Control: no-store, no-cache, must-revalidate\r\n" */
-	HTTPD_HDR_ADD_CACHE_CTRL                = 0x0010,
+	HTTPD_HDR_ADD_CACHE_CTRL = 0x0010,
 	/** "Cache-Control: post-check=0, pre-check=0\r\n" */
-	HTTPD_HDR_ADD_CACHE_CTRL_NO_CHK         = 0x0020,
+	HTTPD_HDR_ADD_CACHE_CTRL_NO_CHK = 0x0020,
 	/** "Pragma: no-cache\r\n" */
-	HTTPD_HDR_ADD_PRAGMA_NO_CACHE           = 0x0040,
+	HTTPD_HDR_ADD_PRAGMA_NO_CACHE = 0x0040,
 } httpd_hdr_field_sel_t;
 
 /** Default HTTP headers from \ref httpd_hdr_field_sel_t */
 #define HTTPD_DEFAULT_HDR_FLAGS (HTTPD_HDR_ADD_SERVER | \
-		HTTPD_HDR_ADD_CONN_CLOSE | HTTPD_HDR_ADD_TYPE_CHUNKED)
+								 HTTPD_HDR_ADD_CONN_CLOSE | HTTPD_HDR_ADD_TYPE_CHUNKED)
 
 /** @brief Send HTTP Status Headers
  *
@@ -916,8 +921,7 @@ typedef enum {
  *  @return   -WM_FAIL       :otherwise
  */
 int httpd_send_hdr_from_code(int sock, int stat_code,
-			     enum http_content_type content_type);
-
+							 enum http_content_type content_type);
 
 /** @brief Validate an incoming request with a registered handler
  *
@@ -981,7 +985,7 @@ int httpd_recv(int sock, void *buf, size_t n, int flags);
  *  @return -WM_FAIL       :otherwise
  */
 int httpd_send_response(httpd_request_t *req, const char *first_line,
-		char *content, int length, const char *content_type);
+						char *content, int length, const char *content_type);
 
 /** @brief Send HTTP response 301: Moved Permanently
  *
@@ -1009,8 +1013,7 @@ int httpd_send_response(httpd_request_t *req, const char *first_line,
  *  @return WM_SUCCESS      :if successful
  *  @return -WM_FAIL        :otherwise
  */
-int httpd_send_response_301(httpd_request_t *req, char *location, const char
-		*content_type, char *content, int content_len);
+int httpd_send_response_301(httpd_request_t *req, char *location, const char *content_type, char *content, int content_len);
 
 /** @brief Send an HTTP header
  *
@@ -1102,7 +1105,7 @@ int httpd_purge_headers(int sock);
  *  @return -WM_FAIL       :otherwise
  */
 int httpd_parse_hdr_tags(httpd_request_t *req, int sock,
-			 char *scratch, int len);
+						 char *scratch, int len);
 
 /** @brief Get the incoming data in case of HTTP POST request
  *
@@ -1145,7 +1148,8 @@ int httpd_get_data(httpd_request_t *req, char *content, int length);
  *  @return   -WM_FAIL   : otherwise
  */
 
-typedef struct {
+typedef struct
+{
 	/* Mandatory. Will be sent to the client */
 	const unsigned char *server_cert;
 	/* Size of server_cert */
@@ -1166,26 +1170,20 @@ typedef struct {
 	int client_cert_size;
 } httpd_tls_certs_t;
 
-
 int httpd_auth_init(char *name, char *passwd);
 
-char *get_httpd_auth( void );
+char *get_httpd_auth(void);
 
 /**
   * @}
   */
 
-
 /**
   * @}
   */
-
 
 /*
  * Call this function to set httpd tls certificates.
  */
 //int httpd_use_tls_certificates(const httpd_tls_certs_t *httpd_tls_certs);
 #endif
-
-
-

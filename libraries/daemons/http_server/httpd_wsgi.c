@@ -599,7 +599,7 @@ int httpd_get_data(httpd_request_t *req, char *content, int length)
 			ret, req->remaining_bytes);
 out:
 	free(buf);
-	return req->remaining_bytes;
+	return ret;
 }
 
 static int get_matching_chars(const char *s1, const char *s2)

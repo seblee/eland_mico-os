@@ -379,6 +379,12 @@ static int __httpd_parse_hdr_tags(char *data_p, int len,
                          HTTP_CHUNKED, sizeof(HTTP_CHUNKED) - 1))
             req_p->chunked = 1;
     }
+    else if (strncasecmp(data_p, "Hash: ", strlen("Hash: ")) == 0)
+    {
+        memset(req_p->hash, 0, 33);
+        memcpy(req_p->hash, data_p + strlen("Hash: "),
+               strlen(data_p + strlen("Hash: ")));
+    }
     return kNoErr;
 }
 

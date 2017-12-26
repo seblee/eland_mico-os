@@ -35,7 +35,7 @@
 #include "httpd.h"
 #include "mico.h"
 
-#define CONFIG_HTTPD_DEBUG
+//#define CONFIG_HTTPD_DEBUG
 
 #ifdef CONFIG_HTTPD_DEBUG
 #define httpd_d(M, ...) \
