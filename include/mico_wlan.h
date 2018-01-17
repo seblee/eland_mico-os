@@ -189,10 +189,10 @@ typedef  struct  _ScanResult_adv
   char ApNum;       /**< The number of access points found in scanning.*/
   struct { 
     char ssid[32];  /**< The SSID of an access point.*/
-    char ApPower;   /**< Signal strength, min:0, max:100*/
     char bssid[6];  /**< The BSSID of an access point.*/
     char channel;   /**< The RF frequency, 1-13*/
     wlan_sec_type_t security;   /**< Security type, @ref wlan_sec_type_t*/
+    int16_t rssi;   /**< Signal strength*/
   } * ApList;
 } ScanResult_adv; 
 
@@ -204,7 +204,7 @@ typedef  struct  _ScanResult
   char ApNum;       /**< The number of access points found in scanning. */
   struct {  
     char ssid[32];  /**< The SSID of an access point. */
-    char ApPower;   /**< Signal strength, min:0, max:100. */
+    int16_t rssi;   /**< Signal strength*/
   } * ApList; 
 } ScanResult;  
 
@@ -281,7 +281,7 @@ typedef struct _network_InitTypeDef_adv_st
  */
 typedef struct _linkStatus_t{
   int is_connected;       /**< The link to wlan is established or not, 0: disconnected, 1: connected. */
-  int wifi_strength;      /**< Signal strength of the current connected AP */
+  int rssi;               /**< Signal strength of the current connected AP */
   uint8_t  ssid[32];      /**< SSID of the current connected wlan */
   uint8_t  bssid[6];      /**< BSSID of the current connected wlan */
   int      channel;       /**< Channel of the current connected wlan */

@@ -42,8 +42,8 @@
 *                    Constants
 ******************************************************/
 
-#define HARDWARE_REVISION "V03"
-#define DEFAULT_NAME "ALILO_G6"
+#define HARDWARE_REVISION "V02"
+#define DEFAULT_NAME "Eland_V0_2"
 #define MODEL "EMW3080B"
 
 /* MICO RTOS tick rate in Hz */
@@ -83,6 +83,10 @@
 /************************************************************************
  * Platform provide OTA temporary partition as secondary application partition */
 //#define MICO_ENABLE_SECONDARY_APPLICATION
+
+/************************************************************************
+ * Support Easylink&softap mode */
+#define MICO_EASYLINK_AND_SOFTAP_ENABLED
 
 /******************************************************
 *                   Enumerations
