@@ -597,39 +597,77 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
     // }
     while (inHeader->extraDataLen < inHeader->contentLength)
     {
-        //selectResult = select(inSock + 1, &readSet, NULL, NULL, (struct timeval *)&t);
-        //require_action(selectResult >= 1, exit, err = kNotReadableErr);
-
-        if (inHeader->isCallbackSupported == true)
+        if (ssl_pending(ssl))
         {
-            /* We has extra data, and we give these data to application by onReceivedDataCallback function */
-            readLength = inHeader->contentLength - inHeader->extraDataLen > READ_LENGTH ? READ_LENGTH : inHeader->contentLength - inHeader->extraDataLen;
-            readResult = ssl_recv(ssl, (uint8_t *)(inHeader->extraDataPtr), readLength);
+            if (inHeader->isCallbackSupported == true)
+            {
+                /* We has extra data, and we give these data to application by onReceivedDataCallback function */
+                readLength = inHeader->contentLength - inHeader->extraDataLen > READ_LENGTH ? READ_LENGTH : inHeader->contentLength - inHeader->extraDataLen;
+                readResult = ssl_recv(ssl, (uint8_t *)(inHeader->extraDataPtr), readLength);
 
-            if (readResult > 0)
-                inHeader->extraDataLen += readResult;
+                if (readResult > 0)
+                    inHeader->extraDataLen += readResult;
+                else
+                {
+                    err = kConnectionErr;
+                    goto exit;
+                }
+                err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
+                if (err != kNoErr)
+                    goto exit;
+            }
             else
             {
-                err = kConnectionErr;
-                goto exit;
+                /* We has extra data and we has a predefined buffer to store the total extra data return when all data has received*/
+                readResult = ssl_recv(ssl,
+                                      (uint8_t *)(inHeader->extraDataPtr + inHeader->extraDataLen),
+                                      (inHeader->contentLength - inHeader->extraDataLen));
+
+                if (readResult > 0)
+                    inHeader->extraDataLen += readResult;
+                else
+                {
+                    err = kConnectionErr;
+                    goto exit;
+                }
             }
-            err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
-            if (err != kNoErr)
-                goto exit;
         }
         else
         {
-            /* We has extra data and we has a predefined buffer to store the total extra data return when all data has received*/
-            readResult = ssl_recv(ssl,
-                                  (uint8_t *)(inHeader->extraDataPtr + inHeader->extraDataLen),
-                                  (inHeader->contentLength - inHeader->extraDataLen));
+            selectResult = select(inSock + 1, &readSet, NULL, NULL, (struct timeval *)&t);
+            require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
-            if (readResult > 0)
-                inHeader->extraDataLen += readResult;
+            if (inHeader->isCallbackSupported == true)
+            {
+                /* We has extra data, and we give these data to application by onReceivedDataCallback function */
+                readLength = inHeader->contentLength - inHeader->extraDataLen > READ_LENGTH ? READ_LENGTH : inHeader->contentLength - inHeader->extraDataLen;
+                readResult = ssl_recv(ssl, (uint8_t *)(inHeader->extraDataPtr), readLength);
+
+                if (readResult > 0)
+                    inHeader->extraDataLen += readResult;
+                else
+                {
+                    err = kConnectionErr;
+                    goto exit;
+                }
+                err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
+                if (err != kNoErr)
+                    goto exit;
+            }
             else
             {
-                err = kConnectionErr;
-                goto exit;
+                /* We has extra data and we has a predefined buffer to store the total extra data return when all data has received*/
+                readResult = ssl_recv(ssl,
+                                      (uint8_t *)(inHeader->extraDataPtr + inHeader->extraDataLen),
+                                      (inHeader->contentLength - inHeader->extraDataLen));
+
+                if (readResult > 0)
+                    inHeader->extraDataLen += readResult;
+                else
+                {
+                    err = kConnectionErr;
+                    goto exit;
+                }
             }
         }
     }

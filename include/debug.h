@@ -60,7 +60,7 @@
                                       mico_rtos_lock_mutex( &stdio_tx_mutex );\
                                       printf("[%ld][%s: %s:%4d] " M "\r\n", mico_rtos_get_time(), N, SHORT_FILE, __LINE__, ##__VA_ARGS__);\
                                       mico_rtos_unlock_mutex( &stdio_tx_mutex );}while(0==1)
-                    
+
     #ifndef MICO_ASSERT_INFO_DISABLE
         #define debug_print_assert(A,B,C,D,E,F) do {if (mico_debug_enabled==0)break;\
                                                      mico_rtos_lock_mutex( &stdio_tx_mutex );\

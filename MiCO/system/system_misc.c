@@ -137,7 +137,10 @@ static void micoNotify_WiFIParaChangedHandler(apinfo_adv_t *ap_info, char *key, 
     }
 
     if (_needsUpdate == true)
+    {
         mico_system_context_update(&inContext->flashContentInRam);
+        system_log("############ WiFIPara_saved ##############");
+    }
     mico_rtos_unlock_mutex(&inContext->flashContentInRam_mutex);
 
 exit:

@@ -470,7 +470,7 @@ enum wm_httpd_errno
 #define HTTPD_TEXT_SUCCESS "success\r\n"
 
 /** Content-Type: application/json */
-#define HTTP_CONTENT_JSON_STR "application/json"
+#define HTTP_CONTENT_JSON_STR "application/json; charset=utf-8"
 /** Content-Type: application/octet-stream */
 #define HTTP_CONTENT_OCTET_STREAM "application/octet-stream"
 /** Content-Type: text/xml */
