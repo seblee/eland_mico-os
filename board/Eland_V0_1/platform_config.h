@@ -70,7 +70,7 @@
 
 /************************************************************************
  * CPU clock */
-#define MCU_CLOCK_HZ (100000000)
+#define MCU_CLOCK_HZ (125000000)
 
 /************************************************************************
  * How many bits are used in NVIC priority configuration */
@@ -78,7 +78,7 @@
 
 /************************************************************************
  * Enable write protection to write-disabled embedded flash sectors */
-//#define MCU_EBANLE_FLASH_PROTECT
+//#define MCU_ENABLE_FLASH_PROTECT
 
 /************************************************************************
  * Platform provide OTA temporary partition as secondary application partition */
@@ -86,7 +86,7 @@
 
 /************************************************************************
  * Support Easylink&softap mode */
-#define MICO_EASYLINK_AND_SOFTAP_ENABLED
+#define PLATFORM_CONFIG_EASYLINK_SOFTAP_COEXISTENCE 1
 
 /******************************************************
 *                   Enumerations
