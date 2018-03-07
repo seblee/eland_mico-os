@@ -371,199 +371,200 @@ OSStatus MICOReadConfiguration(system_context_t *inContext)
             err = MicoFlashWrite(MICO_PARTITION_PARAMETER_2, &crc_offset, (uint8_t *)&crc_target, CRC_SIZE);
             require_noerr(err, exit);
         }
-
-        para_log(" Config read, seed = %d!", inContext->flashContentInRam.micoSystemConfig.seed);
-
-        seedNum = inContext->flashContentInRam.micoSystemConfig.seed;
-        if (seedNum == -1)
-            seedNum = 0;
-
-        if (inContext->flashContentInRam.micoSystemConfig.magic_number != SYS_MAGIC_NUMBR)
-        {
-            para_log("Magic number error, restore to default");
-#ifdef MFG_MODE_AUTO
-            err = MICORestoreMFG();
-#else
-            err = mico_system_context_restore(mico_context);
-#endif
-            require_noerr(err, exit);
-        }
-
-        if (inContext->flashContentInRam.micoSystemConfig.dhcpEnable == DHCP_Disable)
-        {
-            strcpy((char *)inContext->micoStatus.localIp, inContext->flashContentInRam.micoSystemConfig.localIp);
-            strcpy((char *)inContext->micoStatus.netMask, inContext->flashContentInRam.micoSystemConfig.netMask);
-            strcpy((char *)inContext->micoStatus.gateWay, inContext->flashContentInRam.micoSystemConfig.gateWay);
-            strcpy((char *)inContext->micoStatus.dnsServer, inContext->flashContentInRam.micoSystemConfig.dnsServer);
-        }
-
-    exit:
-        if (sys_backup_data != NULL)
-            free(sys_backup_data);
-        if (user_backup_data != NULL)
-            free(user_backup_data);
-        return err;
     }
 
-    OSStatus mico_system_context_update(mico_Context_t * in_context)
+    para_log(" Config read, seed = %d!", inContext->flashContentInRam.micoSystemConfig.seed);
+
+    seedNum = inContext->flashContentInRam.micoSystemConfig.seed;
+    if (seedNum == -1)
+        seedNum = 0;
+
+    if (inContext->flashContentInRam.micoSystemConfig.magic_number != SYS_MAGIC_NUMBR)
     {
-        OSStatus err = kNoErr;
-        require_action(in_context, exit, err = kNotPreparedErr);
-
-        sys_context->flashContentInRam.micoSystemConfig.seed = ++seedNum;
-
-        err = internal_update_config(sys_context);
+        para_log("Magic number error, restore to default");
+#ifdef MFG_MODE_AUTO
+        err = MICORestoreMFG();
+#else
+        err = mico_system_context_restore(mico_context);
+#endif
         require_noerr(err, exit);
-
-    exit:
-        return err;
     }
 
-    //static mico_Context_t * inContext=0;
-    /******************************************************
+    if (inContext->flashContentInRam.micoSystemConfig.dhcpEnable == DHCP_Disable)
+    {
+        strcpy((char *)inContext->micoStatus.localIp, inContext->flashContentInRam.micoSystemConfig.localIp);
+        strcpy((char *)inContext->micoStatus.netMask, inContext->flashContentInRam.micoSystemConfig.netMask);
+        strcpy((char *)inContext->micoStatus.gateWay, inContext->flashContentInRam.micoSystemConfig.gateWay);
+        strcpy((char *)inContext->micoStatus.dnsServer, inContext->flashContentInRam.micoSystemConfig.dnsServer);
+    }
+
+exit:
+    if (sys_backup_data != NULL)
+        free(sys_backup_data);
+    if (user_backup_data != NULL)
+        free(user_backup_data);
+    return err;
+}
+
+OSStatus mico_system_context_update(mico_Context_t *in_context)
+{
+    OSStatus err = kNoErr;
+    require_action(in_context, exit, err = kNotPreparedErr);
+
+    sys_context->flashContentInRam.micoSystemConfig.seed = ++seedNum;
+
+    err = internal_update_config(sys_context);
+    require_noerr(err, exit);
+
+exit:
+    return err;
+}
+
+//static mico_Context_t * inContext=0;
+/******************************************************
  *               Function Definitions
  ******************************************************/
-    static uint32_t system_context_get_para_data(para_section_t section)
+static uint32_t system_context_get_para_data(para_section_t section)
+{
+    uint32_t data_ptr = 0;
+    require(sys_context, exit);
+    require(section <= PARA_END_SECTION, exit);
+
+    /* para_data stored in RAM, PARA_APP_DATA_SECTION is a seperate section */
+    if (section == PARA_APP_DATA_SECTION)
+        data_ptr = (uint32_t)sys_context->user_config_data;
+    else if (section == PARA_END_SECTION)
+        data_ptr = (uint32_t)sys_context->user_config_data + sys_context->user_config_data_size + 1;
+    else
+        data_ptr = (uint32_t)sys_context + mico_context_section_offsets[section];
+
+exit:
+    return data_ptr;
+}
+
+OSStatus mico_system_para_read(void **info_ptr, int section, uint32_t offset, uint32_t size)
+{
+    OSStatus err = kNoErr;
+    uint32_t addr_sec = system_context_get_para_data((para_section_t)section);
+    mico_Context_t *mico_context = mico_system_context_get();
+
+    require_action(mico_context, exit, err = kNotPreparedErr);
+    require_action((addr_sec + offset + size) < system_context_get_para_data((para_section_t)(section + 1)), exit, err = kSizeErr);
+
+    *info_ptr = (void *)(addr_sec + offset);
+
+exit:
+    return err;
+}
+
+OSStatus mico_system_para_read_release(void *info_ptr)
+{
+    UNUSED_PARAMETER(info_ptr);
+    return true;
+}
+
+OSStatus mico_system_para_write(const void *info_ptr, int section, uint32_t offset, uint32_t size)
+{
+    OSStatus err = kNoErr;
+    uint32_t addr_sec = system_context_get_para_data((para_section_t)section);
+    mico_Context_t *mico_context = mico_system_context_get();
+
+    require_action(mico_context, exit, err = kNotPreparedErr);
+    require_action((addr_sec + offset + size) < system_context_get_para_data((para_section_t)(section + 1)), exit, err = kSizeErr);
+
+    memcpy((void *)(addr_sec + offset), info_ptr, size);
+    mico_system_context_update(mico_context);
+
+exit:
+    return err;
+}
+
+OSStatus mico_ota_switch_to_new_fw(int ota_data_len, uint16_t ota_data_crc)
+{
+    mico_Context_t *mico_context = mico_system_context_get();
+#ifdef MICO_ENABLE_SECONDARY_APPLICATION
+    UNUSED_PARAMETER(ota_data_len);
+    UNUSED_PARAMETER(ota_data_crc);
+    extern int switch_active_firmware(void);
+    switch_active_firmware();
+#else
+    mico_logic_partition_t *ota_partition = MicoFlashGetInfo(MICO_PARTITION_OTA_TEMP);
+
+    memset(&sys_context->flashContentInRam.bootTable, 0, sizeof(boot_table_t));
+#ifdef CONFIG_MX108
+    sys_context->flashContentInRam.bootTable.dst_adr = 0x13200;
+    sys_context->flashContentInRam.bootTable.src_adr = ota_partition->partition_start_addr;
+    sys_context->flashContentInRam.bootTable.siz = ota_data_len;
+    sys_context->flashContentInRam.bootTable.crc = ota_data_crc;
+#else
+    sys_context->flashContentInRam.bootTable.length = ota_data_len;
+    sys_context->flashContentInRam.bootTable.start_address = ota_partition->partition_start_addr;
+    sys_context->flashContentInRam.bootTable.type = 'A';
+    sys_context->flashContentInRam.bootTable.upgrade_type = 'U';
+    sys_context->flashContentInRam.bootTable.crc = ota_data_crc;
+#endif
+    mico_system_context_update(mico_context);
+#endif
+    return kNoErr;
+}
+
+static int is_old_part_crc_match(system_context_t *inContext, mico_partition_t part)
+{
+    uint32_t para_offset = 0x0;
+    //uint32_t config_offset = CONFIG_OFFSET;
+    uint32_t crc_offset = mico_context_section_offsets[PARA_APP_DATA_SECTION] + inContext->user_config_data_size;
+    ;
+    CRC16_Context crc_context;
+    uint16_t crc_result, crc_target;
+
+    para_offset = 0x0;
+    MicoFlashRead(part, &para_offset, (uint8_t *)&inContext->flashContentInRam, sizeof(system_config_t));
+    para_offset = mico_context_section_offsets[PARA_APP_DATA_SECTION];
+    MicoFlashRead(part, &para_offset, (uint8_t *)inContext->user_config_data, inContext->user_config_data_size);
+
+    CRC16_Init(&crc_context);
+    CRC16_Update(&crc_context, (uint8_t *)&inContext->flashContentInRam.micoSystemConfig, SYS_CONFIG_SIZE);
+    CRC16_Update(&crc_context, inContext->user_config_data, inContext->user_config_data_size);
+    CRC16_Final(&crc_context, &crc_result);
+    para_log("crc_result = %d", crc_result);
+
+    crc_offset = mico_context_section_offsets[PARA_APP_DATA_SECTION] + inContext->user_config_data_size;
+    ;
+    MicoFlashRead(part, &crc_offset, (uint8_t *)&crc_target, CRC_SIZE);
+    para_log("crc_target = %d", crc_target);
+
+    if (is_crc_match(crc_result, crc_target) == true)
     {
-        uint32_t data_ptr = 0;
-        require(sys_context, exit);
-        require(section <= PARA_END_SECTION, exit);
-
-        /* para_data stored in RAM, PARA_APP_DATA_SECTION is a seperate section */
-        if (section == PARA_APP_DATA_SECTION)
-            data_ptr = (uint32_t)sys_context->user_config_data;
-        else if (section == PARA_END_SECTION)
-            data_ptr = (uint32_t)sys_context->user_config_data + sys_context->user_config_data_size + 1;
-        else
-            data_ptr = (uint32_t)sys_context + mico_context_section_offsets[section];
-
-    exit:
-        return data_ptr;
-    }
-
-    OSStatus mico_system_para_read(void **info_ptr, int section, uint32_t offset, uint32_t size)
-    {
-        OSStatus err = kNoErr;
-        uint32_t addr_sec = system_context_get_para_data((para_section_t)section);
-        mico_Context_t *mico_context = mico_system_context_get();
-
-        require_action(mico_context, exit, err = kNotPreparedErr);
-        require_action((addr_sec + offset + size) < system_context_get_para_data((para_section_t)(section + 1)), exit, err = kSizeErr);
-
-        *info_ptr = (void *)(addr_sec + offset);
-
-    exit:
-        return err;
-    }
-
-    OSStatus mico_system_para_read_release(void *info_ptr)
-    {
-        UNUSED_PARAMETER(info_ptr);
         return true;
     }
-
-    OSStatus mico_system_para_write(const void *info_ptr, int section, uint32_t offset, uint32_t size)
+    else
     {
-        OSStatus err = kNoErr;
-        uint32_t addr_sec = system_context_get_para_data((para_section_t)section);
-        mico_Context_t *mico_context = mico_system_context_get();
-
-        require_action(mico_context, exit, err = kNotPreparedErr);
-        require_action((addr_sec + offset + size) < system_context_get_para_data((para_section_t)(section + 1)), exit, err = kSizeErr);
-
-        memcpy((void *)(addr_sec + offset), info_ptr, size);
-        mico_system_context_update(mico_context);
-
-    exit:
-        return err;
+        return false;
     }
+}
 
-    OSStatus mico_ota_switch_to_new_fw(int ota_data_len, uint16_t ota_data_crc)
+/* Try to use the OLD mico para save method */
+static OSStatus try_old_para(system_context_t *inContext)
+{
+    OSStatus err = kNoErr;
+    mico_Context_t *mico_context = mico_system_context_get();
+
+    /* Load data and crc from main partition */
+    if (is_old_part_crc_match(inContext, MICO_PARTITION_PARAMETER_1) == true)
     {
-        mico_Context_t *mico_context = mico_system_context_get();
-#ifdef MICO_ENABLE_SECONDARY_APPLICATION
-        UNUSED_PARAMETER(ota_data_len);
-        UNUSED_PARAMETER(ota_data_crc);
-        extern int switch_active_firmware(void);
-        switch_active_firmware();
-#else
-        mico_logic_partition_t *ota_partition = MicoFlashGetInfo(MICO_PARTITION_OTA_TEMP);
-
-        memset(&sys_context->flashContentInRam.bootTable, 0, sizeof(boot_table_t));
-#ifdef CONFIG_MX108
-        sys_context->flashContentInRam.bootTable.dst_adr = 0x13200;
-        sys_context->flashContentInRam.bootTable.src_adr = ota_partition->partition_start_addr;
-        sys_context->flashContentInRam.bootTable.siz = ota_data_len;
-        sys_context->flashContentInRam.bootTable.crc = ota_data_crc;
-#else
-        sys_context->flashContentInRam.bootTable.length = ota_data_len;
-        sys_context->flashContentInRam.bootTable.start_address = ota_partition->partition_start_addr;
-        sys_context->flashContentInRam.bootTable.type = 'A';
-        sys_context->flashContentInRam.bootTable.upgrade_type = 'U';
-        sys_context->flashContentInRam.bootTable.crc = ota_data_crc;
-#endif
+        para_log("Main partition CRC correct");
         mico_system_context_update(mico_context);
-#endif
         return kNoErr;
     }
-
-    static int is_old_part_crc_match(system_context_t * inContext, mico_partition_t part)
+    /* Load data and crc from backup partition */
+    if (is_old_part_crc_match(inContext, MICO_PARTITION_PARAMETER_2) == true)
     {
-        uint32_t para_offset = 0x0;
-        //uint32_t config_offset = CONFIG_OFFSET;
-        uint32_t crc_offset = mico_context_section_offsets[PARA_APP_DATA_SECTION] + inContext->user_config_data_size;
-        ;
-        CRC16_Context crc_context;
-        uint16_t crc_result, crc_target;
-
-        para_offset = 0x0;
-        MicoFlashRead(part, &para_offset, (uint8_t *)&inContext->flashContentInRam, sizeof(system_config_t));
-        para_offset = mico_context_section_offsets[PARA_APP_DATA_SECTION];
-        MicoFlashRead(part, &para_offset, (uint8_t *)inContext->user_config_data, inContext->user_config_data_size);
-
-        CRC16_Init(&crc_context);
-        CRC16_Update(&crc_context, (uint8_t *)&inContext->flashContentInRam.micoSystemConfig, SYS_CONFIG_SIZE);
-        CRC16_Update(&crc_context, inContext->user_config_data, inContext->user_config_data_size);
-        CRC16_Final(&crc_context, &crc_result);
-        para_log("crc_result = %d", crc_result);
-
-        crc_offset = mico_context_section_offsets[PARA_APP_DATA_SECTION] + inContext->user_config_data_size;
-        ;
-        MicoFlashRead(part, &crc_offset, (uint8_t *)&crc_target, CRC_SIZE);
-        para_log("crc_target = %d", crc_target);
-
-        if (is_crc_match(crc_result, crc_target) == true)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        para_log("Backup partition CRC correct");
+        mico_system_context_update(mico_context);
+        return kNoErr;
     }
+    para_log("Config failed on both partition, restore to default settings!");
+    err = mico_system_context_restore(mico_context);
 
-    /* Try to use the OLD mico para save method */
-    static OSStatus try_old_para(system_context_t * inContext)
-    {
-        OSStatus err = kNoErr;
-        mico_Context_t *mico_context = mico_system_context_get();
-
-        /* Load data and crc from main partition */
-        if (is_old_part_crc_match(inContext, MICO_PARTITION_PARAMETER_1) == true)
-        {
-            para_log("Main partition CRC correct");
-            mico_system_context_update(mico_context);
-            return kNoErr;
-        }
-        /* Load data and crc from backup partition */
-        if (is_old_part_crc_match(inContext, MICO_PARTITION_PARAMETER_2) == true)
-        {
-            para_log("Backup partition CRC correct");
-            mico_system_context_update(mico_context);
-            return kNoErr;
-        }
-        para_log("Config failed on both partition, restore to default settings!");
-        err = mico_system_context_restore(mico_context);
-
-        return err;
-    }
+    return err;
+}
