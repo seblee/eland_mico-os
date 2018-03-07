@@ -27,10 +27,11 @@
 #define CONFIG_MODE_USER                        (2)
 #define CONFIG_MODE_WAC                         (3)
 #define CONFIG_MODE_EASYLINK                    (4)
-#define CONFIG_MODE_EASYLINK_WITH_SOFTAP        (8)  
+#define CONFIG_MODE_EASYLINK_WITH_SOFTAP        (4)  //Legacy definition, not supported any more
 #define CONFIG_MODE_SOFTAP                      (5)
 #define CONFIG_MODE_MONITOR                     (6)
 #define CONFIG_MODE_MONITOR_EASYLINK            (7)
+#define CONFIG_MODE_AWS                         (8) 
 
 
 
@@ -56,7 +57,7 @@ extern "C" {
 #define MiCO_SDK_VERSION_REVISION   (1)
 #endif
 
-#if MICO_WLAN_CONFIG_MODE == CONFIG_MODE_WAC || MICO_WLAN_CONFIG_MODE == CONFIG_MODE_AWS
+#if MICO_WLAN_CONFIG_MODE == CONFIG_MODE_WAC
 #define EasyLink_Needs_Reboot
 #endif
 
@@ -101,6 +102,12 @@ typedef uint8_t config_state_type_t;
 
 /* OTA should save this table to flash */
 typedef struct  _boot_table_t {
+#ifdef CONFIG_MX108
+  uint32_t dst_adr;
+  uint32_t src_adr;
+  uint32_t siz;
+  uint16_t crc;
+#else
   uint32_t start_address; // the address of the bin saved on flash.
   uint32_t length; // file real length
   uint8_t version[8];
@@ -108,6 +115,7 @@ typedef struct  _boot_table_t {
   uint8_t upgrade_type; //u:upgrade, 
   uint16_t crc;
   uint8_t reserved[4];
+#endif
 }boot_table_t;
 
 typedef struct _mico_sys_config_t
@@ -216,6 +224,10 @@ typedef enum {
   NOTIFY_AP_DOWN,
 } notify_wlan_t; 
 
+typedef enum {
+  NOTIFY_GPRS_UP = 1,
+  NOTIFY_GPRS_DOWN,
+} notify_gprs_t; 
 
 #ifdef __cplusplus
 } /*extern "C" */

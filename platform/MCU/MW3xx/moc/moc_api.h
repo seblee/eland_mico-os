@@ -197,6 +197,7 @@ typedef struct mico_api_struct
     OSStatus (*mico_rtos_create_thread)( mico_thread_t* thread, uint8_t priority, const char* name,
                                          mico_thread_function_t function, uint32_t stack_size, void* arg );
     OSStatus (*mico_rtos_delete_thread)( mico_thread_t* thread );
+    void (*mico_rtos_thread_yield)( void );
     void (*mico_rtos_suspend_thread)( mico_thread_t* thread );
     void (*mico_rtos_suspend_all_thread)( void );
     long (*mico_rtos_resume_all_thread)( void );
@@ -327,7 +328,7 @@ typedef struct mico_api_struct
     int (*mico_wlan_monitor_rx_type)( int type );
     int (*mico_wlan_start_monitor)( void );
     int (*mico_wlan_stop_monitor)( void );
-    int (*mico_wlan_set_channel)( int channel );
+    int (*mico_wlan_monitor_set_channel)( int channel );
     void (*mico_wlan_register_monitor_cb)( monitor_cb_t fn );
     void (*wlan_set_channel)( int channel );
     int (*mxchip_active_scan)( char*ssid, int is_adv );
@@ -377,7 +378,8 @@ typedef struct mico_api_struct
     void (*MicoUartPinRedirect)( mico_uart_t uart );
 
     /* Power management*/
-    int (*pm_mcu_state)( power_state_t state, uint32_t time_dur );
+    void (*pm_mcu_cfg)(bool enabled, power_state_t mode,
+	 unsigned int threshold);
     int (*pm_wakeup_source)( );
     void (*wifi_off_mcu_standby)( int seconds );
 

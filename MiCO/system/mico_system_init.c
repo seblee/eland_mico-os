@@ -39,9 +39,7 @@ static OSStatus system_config_mode_worker(void *arg)
 
     micoWlanPowerOn();
 #if (MICO_WLAN_CONFIG_MODE == CONFIG_MODE_EASYLINK)
-    err = mico_easylink(in_context, MICO_TRUE, MICO_FALSE);
-#elif (MICO_WLAN_CONFIG_MODE == CONFIG_MODE_EASYLINK_WITH_SOFTAP)
-    err = mico_easylink(in_context, MICO_TRUE, MICO_TRUE);
+    err = mico_easylink(in_context, MICO_TRUE);
 #elif (MICO_WLAN_CONFIG_MODE == CONFIG_MODE_SOFTAP)
     err = mico_easylink_softap(in_context, MICO_TRUE);
 #elif (MICO_WLAN_CONFIG_MODE == CONFIG_MODE_MONITOR)
@@ -52,6 +50,8 @@ static OSStatus system_config_mode_worker(void *arg)
     err = mico_easylink_usr(in_context, MICO_TRUE);
 #elif (MICO_WLAN_CONFIG_MODE == CONFIG_MODE_WAC)
     err = mico_easylink_wac(in_context, MICO_TRUE);
+#elif (MICO_WLAN_CONFIG_MODE == CONFIG_MODE_AWS)
+    err = mico_easylink_aws(in_context, MICO_TRUE);
 #elif (MICO_WLAN_CONFIG_MODE == CONFIG_MODE_NONE)
 #else
 #error "Wi-Fi configuration mode is not defined"
@@ -96,6 +96,11 @@ OSStatus mico_system_init(mico_Context_t *in_context)
     err = system_network_daemen_start(sys_context);
     require_noerr(err, exit);
 
+#ifdef MICO_FORCE_OTA_ENABLE
+    err = start_forceota_check();
+    require_noerr(err, exit);
+#endif
+
 #ifdef MICO_WLAN_CONNECTION_ENABLE
 #ifndef EasyLink_Needs_Reboot
     /* Create a worker thread for user handling wlan auto-conf event, this worker thread only has
@@ -106,9 +111,11 @@ OSStatus mico_system_init(mico_Context_t *in_context)
 
     if (sys_context->flashContentInRam.micoSystemConfig.configured == unConfigured)
     {
+#ifndef MICO_AUTOCONF_DISABLE
         system_log("Empty configuration. Starting configuration mode...");
         err = mico_system_wlan_start_autoconf();
         require_noerr(err, exit);
+#endif
     }
 #ifdef EasyLink_Needs_Reboot
     else if (sys_context->flashContentInRam.micoSystemConfig.configured == wLanUnConfigured)

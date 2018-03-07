@@ -121,9 +121,9 @@ int mico_wlan_stop_monitor(void)
 {
 	return lib_api_p->mico_wlan_stop_monitor();
 }
-int mico_wlan_set_channel(uint8_t channel)
+int mico_wlan_monitor_set_channel(uint8_t channel)
 {
-	return lib_api_p->mico_wlan_set_channel((int)channel);
+	return lib_api_p->mico_wlan_monitor_set_channel((int)channel);
 }
 void mico_wlan_register_monitor_cb(monitor_cb_t fn)
 {
@@ -657,10 +657,10 @@ OSStatus MicoI2cTransfer( mico_i2c_device_t* device, mico_i2c_message_t* message
 
 OSStatus MicoSpiInitialize( const mico_spi_device_t* spi )
 {
-    if ( platform_spi_drivers[spi->port].initialized == MICO_TRUE )
-        return kNoErr;
+    // if ( platform_spi_drivers[spi->port].initialized == MICO_TRUE )
+    //     return kNoErr;
     lib_api_p->spi_apis->spi_init(spi);
-    platform_spi_drivers[spi->port].initialized = MICO_TRUE;
+    // platform_spi_drivers[spi->port].initialized = MICO_TRUE;
     return kNoErr;
 }
 
@@ -701,8 +701,14 @@ OSStatus mico_wlan_send_mgnt(uint8_t *buffer, uint32_t length)
 	return kNoErr;
 }
 
+/* 3031 MCU power save mode set to PM2 */
 void MicoMcuPowerSaveConfig(int enable)
 {
+    if (enable) {
+        lib_api_p->pm_mcu_cfg(true, PM2, 10);// auto go to sleep mode if sleep time bigger than 10ms.
+    } else {
+        lib_api_p->pm_mcu_cfg(false, PM2, 10);
+    }
 }
 
 /**

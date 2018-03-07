@@ -28,6 +28,8 @@ MODULE               := 3239
 WLAN_CHIP            	:= 43438
 WLAN_CHIP_REVISION   	:= A1
 WLAN_CHIP_FAMILY     	:= 4343x
+# 7.45.98.38 can fix WPA2 KRACK but monitor doesn't work, so roll back to 7.45.45.17
+#WLAN_CHIP_FIRMWARE_VER  := 7.45.98.38
 WLAN_CHIP_FIRMWARE_VER  := 7.45.45.17
 
 BT_CHIP              	:= 43438
@@ -63,9 +65,6 @@ $(NAME)_COMPONENTS += drivers/MiCOKit_EXT
 # Source files
 $(NAME)_SOURCES := platform.c \
                    wifi_nvram.c
-                   
-$(NAME)_LINK_FILES := wifi_nvram.o
-
 
 ifndef NO_WIFI_FIRMWARE
 WIFI_FIRMWARE := $(MICO_OS_PATH)/resources/wifi_firmware/$(WLAN_CHIP)/$(WLAN_CHIP)$(WLAN_CHIP_REVISION)$(WLAN_CHIP_BIN_TYPE)-$(WLAN_CHIP_FIRMWARE_VER).bin

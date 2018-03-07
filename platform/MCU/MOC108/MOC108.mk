@@ -35,11 +35,10 @@ GLOBAL_DEFINES += CONFIG_MX108
 GLOBAL_DEFINES += configUSE_WATCHDOG_TICK=32000
 GLOBAL_DEFINES += configTOTAL_HEAP_SIZE=102400
 GLOBAL_DEFINES += configTIMER_TASK_STACK_DEPTH=750
-GLOBAL_DEFINES += configUSE_TICKLESS_IDLE=0
 GLOBAL_DEFINES += CONFIG_USE_LINKER_HEAP=1
 
 ifeq ($(filter $(RTOS),NoRTOS),)
-GLOBAL_LDFLAGS += -Wl,-wrap,_malloc_r -Wl,-wrap,free -Wl,-wrap,realloc -Wl,-wrap,malloc -Wl,-wrap,calloc -Wl,-wrap,_free_r -Wl,-wrap,_realloc_r #-Wl,-wrap,printf -Wl,-wrap,sprintf
+GLOBAL_LDFLAGS += -Wl,-wrap,_malloc_r -Wl,-wrap,free -Wl,-wrap,realloc -Wl,-wrap,malloc -Wl,-wrap,calloc -Wl,-wrap,_free_r -Wl,-wrap,_realloc_r -Wl,-wrap,_calloc_r#-Wl,-wrap,printf -Wl,-wrap,sprintf
 endif
 
 GLOBAL_LDFLAGS += -Wl,-wrap,printf

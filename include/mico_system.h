@@ -186,6 +186,7 @@ typedef enum{
   CONFIG_BY_MONITOR,          /**< Wlan configured by airkiss from wechat Tencent inc. */
   CONFIG_BY_SOFT_AP,          /**< Wlan configured by EasyLink soft ap mode */
   CONFIG_BY_WAC,              /**< Wlan configured by wireless accessory configuration from Apple inc. */
+  CONFIG_BY_AWS,
   CONFIG_BY_USER,             /**< Wlan configured by user defined functions. */
 } mico_config_source_t;
 
@@ -288,7 +289,15 @@ OSStatus mico_easylink_wac( mico_Context_t * const inContext, mico_bool_t enable
   * @param  enable: MICO_TRUE to start and MICO_FALSE to stop
   * @retval kNoErr is returned on success, otherwise, kXXXErr is returned.
   */
-OSStatus mico_easylink( mico_Context_t * const in_context, mico_bool_t enable, mico_bool_t softap );
+OSStatus mico_easylink( mico_Context_t * const in_context, mico_bool_t enable );
+
+/**
+  * @brief  Start wlan configuration mode: EasyLink AWS protocol
+  * @param  inContext: MiCO system core data, initialized by @ref mico_system_context_init
+  * @param  enable: MICO_TRUE to start and MICO_FALSE to stop
+  * @retval kNoErr is returned on success, otherwise, kXXXErr is returned.
+  */
+OSStatus mico_easylink_aws( mico_Context_t * const in_context, mico_bool_t enable );
 
 /**
   * @brief  Start wlan configuration mode: User mode, setup a routine that monitor wlan
@@ -390,6 +399,22 @@ void mico_easylink_monitor_delegate_package_recved( uint8_t * frame, int len );
   */
 void mico_easylink_monitor_delegate_connect_success( mico_config_source_t source );
 
+/**
+  * @brief  Execute when aws msg is sent
+  * @note   This a delegate function, can be completed by developer.
+  * @note   aws_notify_msg: aws notify msg for discovery
+  * @retval none
+  */
+void mico_easylink_aws_delegate_send_notify_msg(char *aws_notify_msg);
+
+/**
+  * @brief  Execute when module recv udp nofity msg
+  * @note   This a delegate function, can be completed by developer.
+  * @note   aws_notify_msg: msg aws nofity received
+  * @retval none
+  */
+void mico_easylink_aws_delegate_recv_notify_msg(char *aws_notify_msg);
+
 /** @} */
 
 
@@ -482,6 +507,8 @@ typedef enum{
   mico_notify_WIFI_SCAN_ADV_COMPLETED,    /**< A anvanced wlan scan is completed, type: void (*function)(ScanResult_adv *pApList, void* arg)*/
   mico_notify_WIFI_Fatal_ERROR,           /**< A fatal error occured when communicating with wlan sub-system, type: void (*function)(void* arg)*/
   mico_notify_Stack_Overflow_ERROR,       /**< A MiCO RTOS thread's stack is over-flowed, type: void (*function)(char *taskname, void* arg)*/
+  mico_notify_GPRS_STATUS_CHANGED,
+  mico_notify_MAX
  
 } mico_notify_types_t;
 
