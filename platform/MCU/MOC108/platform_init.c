@@ -107,7 +107,10 @@ void startApplication( uint32_t app_addr )
 
 void platform_mcu_reset( void )
 {
-    bk_wdg_initialize(1);
+    mico_rtos_enter_critical();
+    if(!platform_is_in_interrupt_context())
+        MicoWdgInitialize(1);
+    for(;;);
 }
 
 /* STM32F2 common clock initialisation function
