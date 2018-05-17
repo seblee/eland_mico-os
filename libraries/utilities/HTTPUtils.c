@@ -84,115 +84,48 @@ int SocketReadHTTPHeader(int inSock, HTTPHeader_t *inHeader)
         inHeader->extraDataPtr = 0;
     }
 
-OSStatus SocketReadHTTPBody( int inSock, HTTPHeader_t *inHeader )
-{
-  OSStatus err = kParamErr;
-  ssize_t readResult;
-  int selectResult;
-  fd_set readSet;
-  size_t    lastChunkLen, chunckheaderLen; 
-  char *nextPackagePtr;
-  struct timeval t;
-  size_t          readLength;
-  uint32_t pos = 0;
-  t.tv_sec = 5;
-  t.tv_usec = 0;
-  
-  require( inHeader, exit );
-  err = kNotReadableErr;
-  
-  FD_ZERO( &readSet );
-  FD_SET( inSock, &readSet );
+    /* For chunked extra data without content length */
+    if (inHeader->chunkedData == true)
+    {
+        inHeader->chunkedDataBufferLen = (inHeader->extraDataLen > READ_LENGTH) ? inHeader->extraDataLen : READ_LENGTH;
+        inHeader->chunkedDataBufferPtr = calloc(inHeader->chunkedDataBufferLen, sizeof(uint8_t)); //Make extra data buffer larger than chunk length
+        require_action(inHeader->chunkedDataBufferPtr, exit, err = kNoMemoryErr);
+        memcpy((uint8_t *)inHeader->chunkedDataBufferPtr, end, inHeader->extraDataLen);
+        inHeader->extraDataPtr = inHeader->chunkedDataBufferPtr;
+        return kNoErr;
+    }
 
-  /* Chunked data without content length */
-  if( inHeader->chunkedData == true ){
-    do{
-      /* Find Chunk data length */
-      while ( findChunkedDataLength( inHeader->chunkedDataBufferPtr, inHeader->extraDataLen, &inHeader->extraDataPtr ,"%llu", &inHeader->contentLength ) == false){
-        require_action(inHeader->extraDataLen < inHeader->chunkedDataBufferLen, exit, err=kMalformedErr );
-
-        selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-        require_action( selectResult >= 1, exit, err = kNotReadableErr );
-
-        readResult = read( inSock, inHeader->chunkedDataBufferPtr + inHeader->extraDataLen, (size_t)( inHeader->chunkedDataBufferLen - inHeader->extraDataLen ) );
-
-        if( readResult  > 0 ) inHeader->extraDataLen += readResult;
-        else { err = kConnectionErr; goto exit; }
-      }
-
-      chunckheaderLen = inHeader->extraDataPtr - inHeader->chunkedDataBufferPtr;
-
-      /* Check the last chunk */
-      if(inHeader->contentLength == 0){ 
-        while( findCRLF( inHeader->extraDataPtr, inHeader->extraDataLen - chunckheaderLen, &nextPackagePtr ) == false){ //find CRLF
-          selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-          require_action( selectResult >= 1, exit, err = kNotReadableErr );
-
-          readResult = read( inSock,
-                            (uint8_t *)( inHeader->extraDataPtr + inHeader->extraDataLen - chunckheaderLen ),
-                            256 - inHeader->extraDataLen ); //Assume chunk trailer length is less than 256 (256 is the min chunk buffer, maybe dangerous
-
-          if( readResult  > 0 ) inHeader->extraDataLen += readResult;
-          else { err = kConnectionErr; goto exit; }
-          err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
-          if( err != kNoErr ) goto exit;
+    /* Extra data with content length */
+    if (inHeader->contentLength != 0)
+    { //Content length >0, create a memory buffer (Content length) and store extra data
+        size_t copyDataLen = (inHeader->contentLength >= inHeader->extraDataLen) ? inHeader->extraDataLen : inHeader->contentLength;
+        if (inHeader->onReceivedDataCallback && (inHeader->onReceivedDataCallback)(inHeader, 0, (uint8_t *)end, copyDataLen, inHeader->userContext) == kNoErr)
+        {
+            inHeader->isCallbackSupported = true;
+            inHeader->extraDataPtr = calloc(READ_LENGTH, sizeof(uint8_t));
+            require_action(inHeader->extraDataPtr, exit, err = kNoMemoryErr);
+            inHeader->extraDataLen = copyDataLen;
         }
-
+        else
+        {
+            inHeader->isCallbackSupported = false;
+            inHeader->extraDataPtr = calloc(inHeader->contentLength, sizeof(uint8_t));
+            require_action(inHeader->extraDataPtr, exit, err = kNoMemoryErr);
+            memcpy((uint8_t *)inHeader->extraDataPtr, end, copyDataLen);
+        }
         err = kNoErr;
-        goto exit;
-      } 
-      else{ // Read chunk data
-        /* Chunk package already exist, callback, move to buffer's head */
-        if( inHeader->extraDataLen >= inHeader->contentLength + chunckheaderLen + 2 ){
-          require_action( *(inHeader->extraDataPtr + inHeader->contentLength ) == '\r' &&
-                          *(inHeader->extraDataPtr + inHeader->contentLength + 1 ) == '\n', 
-                          exit, err = kMalformedErr);
+    } /* Extra data without content length, data is ended by conntection close */
+    // else if(inHeader->extraDataLen != 0){ //Content length =0, but extra data length >0, create a memory buffer (1500)and store extra data
+    //   inHeader->dataEndedbyClose = true;
+    //   inHeader->extraDataPtr = calloc(1500, sizeof(uint8_t));
+    //   require_action(inHeader->extraDataPtr, exit, err = kNoMemoryErr);
+    //   memcpy((uint8_t *)inHeader->extraDataPtr, end, inHeader->extraDataLen);
+    //   (inHeader->onReceivedDataCallback)(inHeader, 0, (uint8_t *)inHeader->extraDataPtr, inHeader->extraDataLen, inHeader->userContext);
 
-          err = (inHeader->onReceivedDataCallback)(inHeader,  pos, 
-                                                        (uint8_t *)inHeader->extraDataPtr, 
-                                                        inHeader->contentLength, 
-                                                        inHeader->userContext);
-          if( err != kNoErr ) goto exit;
-          pos+=inHeader->contentLength;
-
-          /* Move next chunk to chunked data buffer header point */
-          lastChunkLen = inHeader->extraDataPtr - inHeader->chunkedDataBufferPtr + inHeader->contentLength;
-          if(inHeader->contentLength) lastChunkLen += 2;  //Last chunck data has a CRLF tail
-          memmove( inHeader->chunkedDataBufferPtr, inHeader->chunkedDataBufferPtr + lastChunkLen, inHeader->chunkedDataBufferLen - lastChunkLen  );
-          inHeader->extraDataLen -= lastChunkLen;
-        }
-        /* Chunck exist without the last LF, generate callback abd recv LF */
-        /* Callback , read LF */
-        else if(inHeader->extraDataLen == inHeader->contentLength + chunckheaderLen +1){ //recv CR 
-
-          require_action( *(inHeader->chunkedDataBufferPtr + inHeader->extraDataLen - 1) == '\r' ,
-                          exit, err = kMalformedErr);
-
-          err = (inHeader->onReceivedDataCallback)(inHeader,  pos, 
-                                                        (uint8_t *)inHeader->extraDataPtr, 
-                                                        inHeader->extraDataLen - chunckheaderLen-1, 
-                                                        inHeader->userContext);
-          if( err != kNoErr ) goto exit;
-          pos+=inHeader->extraDataLen - chunckheaderLen-1;
-          selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-          require_action( selectResult >= 1, exit, err = kNotReadableErr );
-
-          readResult = read( inSock, (uint8_t *)inHeader->extraDataPtr, 1);
-
-          if( readResult  > 0 ) {}
-          else { err = kConnectionErr; goto exit; }
-
-          require_action( *(inHeader->extraDataPtr) == '\n', exit, err = kMalformedErr);
-          inHeader->extraDataLen = 0;
-        }
-        else{
-          /* Callback , read , callback , read CRLF */
-          err = (inHeader->onReceivedDataCallback)(inHeader, pos, 
-                                                       (uint8_t *)inHeader->extraDataPtr, 
-                                                       inHeader->extraDataLen - chunckheaderLen, 
-                                                       inHeader->userContext);
-          if( err != kNoErr ) goto exit;
-          pos += inHeader->extraDataLen - chunckheaderLen;
+    //   err = kNoErr;
+    // }
+    else
+        return kNoErr;
 
 exit:
     return err;
@@ -263,72 +196,153 @@ OSStatus SocketReadHTTPBody(int inSock, HTTPHeader_t *inHeader)
                         err = kConnectionErr;
                         goto exit;
                     }
-                    (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
+                    err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
+                    if (err != kNoErr)
+                        goto exit;
                 }
 
                 err = kNoErr;
                 goto exit;
             }
             else
-              //Data needed is less than valid buffer size
-              readLength = inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen) ; 
+            { // Read chunk data
+                /* Chunk package already exist, callback, move to buffer's head */
+                if (inHeader->extraDataLen >= inHeader->contentLength + chunckheaderLen + 2)
+                {
+                    require_action(*(inHeader->extraDataPtr + inHeader->contentLength) == '\r' &&
+                                       *(inHeader->extraDataPtr + inHeader->contentLength + 1) == '\n',
+                                   exit, err = kMalformedErr);
 
-            readResult = read( inSock, (uint8_t *)inHeader->extraDataPtr, readLength);
-            
-            if( readResult  > 0 ) inHeader->extraDataLen += readResult;
-            else { err = kConnectionErr; goto exit; }
+                    err = (inHeader->onReceivedDataCallback)(inHeader, pos,
+                                                             (uint8_t *)inHeader->extraDataPtr,
+                                                             inHeader->contentLength,
+                                                             inHeader->userContext);
+                    if (err != kNoErr)
+                        goto exit;
+                    pos += inHeader->contentLength;
 
-            err = (inHeader->onReceivedDataCallback)(inHeader, pos, 
-                                                         (uint8_t *)inHeader->extraDataPtr, 
-                                                         readResult, 
-                                                         inHeader->userContext);
-            if( err != kNoErr ) goto exit;
-            pos += readResult;
-          } 
+                    /* Move next chunk to chunked data buffer header point */
+                    lastChunkLen = inHeader->extraDataPtr - inHeader->chunkedDataBufferPtr + inHeader->contentLength;
+                    if (inHeader->contentLength)
+                        lastChunkLen += 2; //Last chunck data has a CRLF tail
+                    memmove(inHeader->chunkedDataBufferPtr, inHeader->chunkedDataBufferPtr + lastChunkLen, inHeader->chunkedDataBufferLen - lastChunkLen);
+                    inHeader->extraDataLen -= lastChunkLen;
+                }
+                /* Chunck exist without the last LF, generate callback abd recv LF */
+                /* Callback , read LF */
+                else if (inHeader->extraDataLen == inHeader->contentLength + chunckheaderLen + 1)
+                { //recv CR
 
-          selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-          require_action( selectResult >= 1, exit, err = kNotReadableErr );
+                    require_action(*(inHeader->chunkedDataBufferPtr + inHeader->extraDataLen - 1) == '\r',
+                                   exit, err = kMalformedErr);
 
-          readResult = read( inSock, (uint8_t *)inHeader->extraDataPtr, 2);
+                    err = (inHeader->onReceivedDataCallback)(inHeader, pos,
+                                                             (uint8_t *)inHeader->extraDataPtr,
+                                                             inHeader->extraDataLen - chunckheaderLen - 1,
+                                                             inHeader->userContext);
+                    if (err != kNoErr)
+                        goto exit;
+                    pos += inHeader->extraDataLen - chunckheaderLen - 1;
+                    selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                    require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
-          if( readResult  > 0 ) {}
-          else { err = kConnectionErr; goto exit; }
+                    readResult = read(inSock, (uint8_t *)inHeader->extraDataPtr, 1);
 
+                    if (readResult > 0)
+                    {
+                    }
+                    else
+                    {
+                        err = kConnectionErr;
+                        goto exit;
+                    }
 
-          require_action( *(inHeader->extraDataPtr) == '\r' &&
-                          *(inHeader->extraDataPtr+1 ) == '\n', 
-                          exit, err = kMalformedErr);
+                    require_action(*(inHeader->extraDataPtr) == '\n', exit, err = kMalformedErr);
+                    inHeader->extraDataLen = 0;
+                }
+                else
+                {
+                    /* Callback , read , callback , read CRLF */
+                    err = (inHeader->onReceivedDataCallback)(inHeader, pos,
+                                                             (uint8_t *)inHeader->extraDataPtr,
+                                                             inHeader->extraDataLen - chunckheaderLen,
+                                                             inHeader->userContext);
+                    if (err != kNoErr)
+                        goto exit;
+                    pos += inHeader->extraDataLen - chunckheaderLen;
 
-          inHeader->extraDataLen = 0;
-        }
-      }
-    }while(inHeader->contentLength != 0);
-  }
+                    while (inHeader->extraDataLen < inHeader->contentLength + chunckheaderLen)
+                    {
+                        selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                        require_action(selectResult >= 1, exit, err = kNotReadableErr);
+
+                        if (inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen) > inHeader->chunkedDataBufferLen - chunckheaderLen)
+                            //Data needed is greater than valid buffer size
+                            readLength = inHeader->chunkedDataBufferLen - chunckheaderLen;
+                        else
+                            //Data needed is less than valid buffer size
+                            readLength = inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen);
+
+                        readResult = read(inSock, (uint8_t *)inHeader->extraDataPtr, readLength);
+
+                        if (readResult > 0)
+                            inHeader->extraDataLen += readResult;
+                        else
+                        {
+                            err = kConnectionErr;
+                            goto exit;
+                        }
+
+                        err = (inHeader->onReceivedDataCallback)(inHeader, pos,
+                                                                 (uint8_t *)inHeader->extraDataPtr,
+                                                                 readResult,
+                                                                 inHeader->userContext);
+                        if (err != kNoErr)
+                            goto exit;
+                        pos += readResult;
+                    }
+
+                    selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                    require_action(selectResult >= 1, exit, err = kNotReadableErr);
+
+                    readResult = read(inSock, (uint8_t *)inHeader->extraDataPtr, 2);
+
+                    if (readResult > 0)
+                    {
+                    }
+                    else
+                    {
+                        err = kConnectionErr;
+                        goto exit;
+                    }
+
+                    require_action(*(inHeader->extraDataPtr) == '\r' &&
+                                       *(inHeader->extraDataPtr + 1) == '\n',
+                                   exit, err = kMalformedErr);
+
+                    inHeader->extraDataLen = 0;
+                }
+            }
+        } while (inHeader->contentLength != 0);
+    }
 
     /* We has extra data but total length is not clear, store them to 1500 bytes buffer 
      return when connection is disconnected by remote server */
-    // if (inHeader->dataEndedbyClose == true)
-    // {
-    //     if (inHeader->contentLength == 0)
-    //     { //First read body, return using data received by SocketReadHTTPHeader
-    //         inHeader->contentLength = inHeader->extraDataLen;
-    //     }
-    //     else
-    //     {
-    //         selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
-    //         require_action(selectResult >= 1, exit, err = kNotReadableErr);
+    // if( inHeader->dataEndedbyClose == true){
+    //   if(inHeader->contentLength == 0) { //First read body, return using data received by SocketReadHTTPHeader
+    //     inHeader->contentLength = inHeader->extraDataLen;
+    //   }else{
+    //     selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
+    //     require_action( selectResult >= 1, exit, err = kNotReadableErr );
 
-    //         readResult = read(inSock, (uint8_t *)(inHeader->extraDataPtr), 1500);
-    //         if (readResult > 0)
-    //             inHeader->contentLength = readResult;
-    //         else
-    //         {
-    //             err = kConnectionErr;
-    //             goto exit;
-    //         }
-    //     }
-    //     err = kNoErr;
-    //     goto exit;
+    //     readResult = read( inSock,
+    //                       (uint8_t*)( inHeader->extraDataPtr ),
+    //                       1500 );
+    //     if( readResult  > 0 ) inHeader->contentLength = readResult;
+    //     else { err = kConnectionErr; goto exit; }
+    //   }
+    //   err = kNoErr;
+    //   goto exit;
     // }
 
     while (inHeader->extraDataLen < inHeader->contentLength)
@@ -381,147 +395,263 @@ exit:
 
 OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
 {
-  OSStatus err = kParamErr;
-  ssize_t readResult;
-  int selectResult;
-  fd_set readSet;
-  size_t    lastChunkLen, chunckheaderLen; 
-  char *nextPackagePtr;
-  struct timeval t;
-  size_t          readLength;
-  uint32_t pos = 0;
-  t.tv_sec = 5;
-  t.tv_usec = 0;
-  int inSock = ssl_socket( ssl );
-  
-  require( inHeader, exit );
-  err = kNotReadableErr;
-  
-  FD_ZERO( &readSet );
-  FD_SET( inSock, &readSet );
+    OSStatus err = kParamErr;
+    ssize_t readResult;
+    int selectResult;
+    fd_set readSet;
+    size_t lastChunkLen, chunckheaderLen;
+    char *nextPackagePtr;
+    struct timeval t;
+    size_t readLength;
+    uint32_t pos = 0;
+    t.tv_sec = 5;
+    t.tv_usec = 0;
+    int inSock = ssl_socket(ssl);
 
-  /* Chunked data without content length */
-  if( inHeader->chunkedData == true ){
-    do{
-      /* Find Chunk data length */
-      while ( findChunkedDataLength( inHeader->chunkedDataBufferPtr, inHeader->extraDataLen, &inHeader->extraDataPtr ,"%llu", &inHeader->contentLength ) == false){
-        require_action(inHeader->extraDataLen < inHeader->chunkedDataBufferLen, exit, err=kMalformedErr );
+    require(inHeader, exit);
+    err = kNotReadableErr;
 
-        selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-        require_action( selectResult >= 1, exit, err = kNotReadableErr );
+    FD_ZERO(&readSet);
+    FD_SET(inSock, &readSet);
 
-        readResult = ssl_recv( ssl, inHeader->chunkedDataBufferPtr + inHeader->extraDataLen, (size_t)( inHeader->chunkedDataBufferLen - inHeader->extraDataLen ) );
+    /* Chunked data without content length */
+    if (inHeader->chunkedData == true)
+    {
+        do
+        {
+            /* Find Chunk data length */
+            while (findChunkedDataLength(inHeader->chunkedDataBufferPtr, inHeader->extraDataLen, &inHeader->extraDataPtr, "%llu", &inHeader->contentLength) == false)
+            {
+                require_action(inHeader->extraDataLen < inHeader->chunkedDataBufferLen, exit, err = kMalformedErr);
 
-        if( readResult  > 0 ) inHeader->extraDataLen += readResult;
-        else { err = kConnectionErr; goto exit; }
-      }
+                selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
-      chunckheaderLen = inHeader->extraDataPtr - inHeader->chunkedDataBufferPtr;
+                readResult = ssl_recv(ssl, inHeader->chunkedDataBufferPtr + inHeader->extraDataLen, (size_t)(inHeader->chunkedDataBufferLen - inHeader->extraDataLen));
 
-      /* Check the last chunk */
-      if(inHeader->contentLength == 0){ 
-        while( findCRLF( inHeader->extraDataPtr, inHeader->extraDataLen - chunckheaderLen, &nextPackagePtr ) == false){ //find CRLF
-          selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-          require_action( selectResult >= 1, exit, err = kNotReadableErr );
+                if (readResult > 0)
+                    inHeader->extraDataLen += readResult;
+                else
+                {
+                    err = kConnectionErr;
+                    goto exit;
+                }
+            }
 
-          readResult = ssl_recv( ssl,
-                            (uint8_t *)( inHeader->extraDataPtr + inHeader->extraDataLen - chunckheaderLen ),
-                            256 - inHeader->extraDataLen ); //Assume chunk trailer length is less than 256 (256 is the min chunk buffer, maybe dangerous
+            chunckheaderLen = inHeader->extraDataPtr - inHeader->chunkedDataBufferPtr;
 
-          if( readResult  > 0 ) inHeader->extraDataLen += readResult;
-          else { err = kConnectionErr; goto exit; }
-          err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
-          if( err != kNoErr ) goto exit;
-        }
+            /* Check the last chunk */
+            if (inHeader->contentLength == 0)
+            {
+                while (findCRLF(inHeader->extraDataPtr, inHeader->extraDataLen - chunckheaderLen, &nextPackagePtr) == false)
+                { //find CRLF
+                    selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                    require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
-        err = kNoErr;
-        goto exit;
-      } 
-      else{ // Read chunk data
-        /* Chunk package already exist, callback, move to buffer's head */
-        if( inHeader->extraDataLen >= inHeader->contentLength + chunckheaderLen + 2 ){
-          require_action( *(inHeader->extraDataPtr + inHeader->contentLength ) == '\r' &&
-                          *(inHeader->extraDataPtr + inHeader->contentLength + 1 ) == '\n', 
-                          exit, err = kMalformedErr);
+                    readResult = ssl_recv(ssl,
+                                          (uint8_t *)(inHeader->extraDataPtr + inHeader->extraDataLen - chunckheaderLen),
+                                          256 - inHeader->extraDataLen); //Assume chunk trailer length is less than 256 (256 is the min chunk buffer, maybe dangerous
 
-          err = (inHeader->onReceivedDataCallback)(inHeader,  pos, 
-                                                        (uint8_t *)inHeader->extraDataPtr, 
-                                                        inHeader->contentLength, 
-                                                        inHeader->userContext);
-          if( err != kNoErr ) goto exit;
-          pos+=inHeader->contentLength;
+                    if (readResult > 0)
+                        inHeader->extraDataLen += readResult;
+                    else
+                    {
+                        err = kConnectionErr;
+                        goto exit;
+                    }
+                    err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
+                    if (err != kNoErr)
+                        goto exit;
+                }
 
-          /* Move next chunk to chunked data buffer header point */
-          lastChunkLen = inHeader->extraDataPtr - inHeader->chunkedDataBufferPtr + inHeader->contentLength;
-          if(inHeader->contentLength) lastChunkLen += 2;  //Last chunck data has a CRLF tail
-          memmove( inHeader->chunkedDataBufferPtr, inHeader->chunkedDataBufferPtr + lastChunkLen, inHeader->chunkedDataBufferLen - lastChunkLen  );
-          inHeader->extraDataLen -= lastChunkLen;
-        }
-        /* Chunck exist without the last LF, generate callback abd recv LF */
-        /* Callback , read LF */
-        else if(inHeader->extraDataLen == inHeader->contentLength + chunckheaderLen +1){ //recv CR 
-
-          require_action( *(inHeader->chunkedDataBufferPtr + inHeader->extraDataLen - 1) == '\r' ,
-                          exit, err = kMalformedErr);
-
-          err = (inHeader->onReceivedDataCallback)(inHeader,  pos, 
-                                                        (uint8_t *)inHeader->extraDataPtr, 
-                                                        inHeader->extraDataLen - chunckheaderLen-1, 
-                                                        inHeader->userContext);
-          if( err != kNoErr ) goto exit;
-          pos+=inHeader->extraDataLen - chunckheaderLen-1;
-          selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-          require_action( selectResult >= 1, exit, err = kNotReadableErr );
-
-          readResult = ssl_recv( ssl, (uint8_t *)inHeader->extraDataPtr, 1);
-
-          if( readResult  > 0 ) {}
-          else { err = kConnectionErr; goto exit; }
-
-          require_action( *(inHeader->extraDataPtr) == '\n', exit, err = kMalformedErr);
-          inHeader->extraDataLen = 0;
-        }
-        else{
-          /* Callback , read , callback , read CRLF */
-          err = (inHeader->onReceivedDataCallback)(inHeader, pos, 
-                                                       (uint8_t *)inHeader->extraDataPtr, 
-                                                       inHeader->extraDataLen - chunckheaderLen, 
-                                                       inHeader->userContext);
-          if( err != kNoErr ) goto exit;
-          pos += inHeader->extraDataLen - chunckheaderLen;
-
-          while ( inHeader->extraDataLen < inHeader->contentLength + chunckheaderLen  ){
-            selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-            require_action( selectResult >= 1, exit, err = kNotReadableErr );
-
-            if( inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen) > inHeader->chunkedDataBufferLen - chunckheaderLen)
-              //Data needed is greater than valid buffer size
-              readLength = inHeader->chunkedDataBufferLen - chunckheaderLen; 
+                err = kNoErr;
+                goto exit;
+            }
             else
-              //Data needed is less than valid buffer size
-              readLength = inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen) ; 
+            { // Read chunk data
+                /* Chunk package already exist, callback, move to buffer's head */
+                if (inHeader->extraDataLen >= inHeader->contentLength + chunckheaderLen + 2)
+                {
+                    require_action(*(inHeader->extraDataPtr + inHeader->contentLength) == '\r' &&
+                                       *(inHeader->extraDataPtr + inHeader->contentLength + 1) == '\n',
+                                   exit, err = kMalformedErr);
 
-            readResult = ssl_recv( ssl, (uint8_t *)inHeader->extraDataPtr, readLength);
-            
-            if( readResult  > 0 ) inHeader->extraDataLen += readResult;
-            else { err = kConnectionErr; goto exit; }
+                    err = (inHeader->onReceivedDataCallback)(inHeader, pos,
+                                                             (uint8_t *)inHeader->extraDataPtr,
+                                                             inHeader->contentLength,
+                                                             inHeader->userContext);
+                    if (err != kNoErr)
+                        goto exit;
+                    pos += inHeader->contentLength;
 
-            err = (inHeader->onReceivedDataCallback)(inHeader, pos, 
-                                                         (uint8_t *)inHeader->extraDataPtr, 
-                                                         readResult, 
-                                                         inHeader->userContext);
-            if( err != kNoErr ) goto exit;
-            pos += readResult;
-          } 
+                    /* Move next chunk to chunked data buffer header point */
+                    lastChunkLen = inHeader->extraDataPtr - inHeader->chunkedDataBufferPtr + inHeader->contentLength;
+                    if (inHeader->contentLength)
+                        lastChunkLen += 2; //Last chunck data has a CRLF tail
+                    memmove(inHeader->chunkedDataBufferPtr, inHeader->chunkedDataBufferPtr + lastChunkLen, inHeader->chunkedDataBufferLen - lastChunkLen);
+                    inHeader->extraDataLen -= lastChunkLen;
+                }
+                /* Chunck exist without the last LF, generate callback abd recv LF */
+                /* Callback , read LF */
+                else if (inHeader->extraDataLen == inHeader->contentLength + chunckheaderLen + 1)
+                { //recv CR
 
-          selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
-          require_action( selectResult >= 1, exit, err = kNotReadableErr );
+                    require_action(*(inHeader->chunkedDataBufferPtr + inHeader->extraDataLen - 1) == '\r',
+                                   exit, err = kMalformedErr);
 
-          readResult = ssl_recv( ssl, (uint8_t *)inHeader->extraDataPtr, 2);
+                    err = (inHeader->onReceivedDataCallback)(inHeader, pos,
+                                                             (uint8_t *)inHeader->extraDataPtr,
+                                                             inHeader->extraDataLen - chunckheaderLen - 1,
+                                                             inHeader->userContext);
+                    if (err != kNoErr)
+                        goto exit;
+                    pos += inHeader->extraDataLen - chunckheaderLen - 1;
+                    selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                    require_action(selectResult >= 1, exit, err = kNotReadableErr);
 
-          if( readResult  > 0 ) {}
-          else { err = kConnectionErr; goto exit; }
+                    readResult = ssl_recv(ssl, (uint8_t *)inHeader->extraDataPtr, 1);
 
+                    if (readResult > 0)
+                    {
+                    }
+                    else
+                    {
+                        err = kConnectionErr;
+                        goto exit;
+                    }
+
+                    require_action(*(inHeader->extraDataPtr) == '\n', exit, err = kMalformedErr);
+                    inHeader->extraDataLen = 0;
+                }
+                else
+                {
+                    /* Callback , read , callback , read CRLF */
+                    err = (inHeader->onReceivedDataCallback)(inHeader, pos,
+                                                             (uint8_t *)inHeader->extraDataPtr,
+                                                             inHeader->extraDataLen - chunckheaderLen,
+                                                             inHeader->userContext);
+                    if (err != kNoErr)
+                        goto exit;
+                    pos += inHeader->extraDataLen - chunckheaderLen;
+
+                    while (inHeader->extraDataLen < inHeader->contentLength + chunckheaderLen)
+                    {
+                        selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                        require_action(selectResult >= 1, exit, err = kNotReadableErr);
+
+                        if (inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen) > inHeader->chunkedDataBufferLen - chunckheaderLen)
+                            //Data needed is greater than valid buffer size
+                            readLength = inHeader->chunkedDataBufferLen - chunckheaderLen;
+                        else
+                            //Data needed is less than valid buffer size
+                            readLength = inHeader->contentLength - (inHeader->extraDataLen - chunckheaderLen);
+
+                        readResult = ssl_recv(ssl, (uint8_t *)inHeader->extraDataPtr, readLength);
+
+                        if (readResult > 0)
+                            inHeader->extraDataLen += readResult;
+                        else
+                        {
+                            err = kConnectionErr;
+                            goto exit;
+                        }
+
+                        err = (inHeader->onReceivedDataCallback)(inHeader, pos,
+                                                                 (uint8_t *)inHeader->extraDataPtr,
+                                                                 readResult,
+                                                                 inHeader->userContext);
+                        if (err != kNoErr)
+                            goto exit;
+                        pos += readResult;
+                    }
+
+                    selectResult = select(inSock + 1, &readSet, NULL, NULL, NULL);
+                    require_action(selectResult >= 1, exit, err = kNotReadableErr);
+
+                    readResult = ssl_recv(ssl, (uint8_t *)inHeader->extraDataPtr, 2);
+
+                    if (readResult > 0)
+                    {
+                    }
+                    else
+                    {
+                        err = kConnectionErr;
+                        goto exit;
+                    }
+
+                    require_action(*(inHeader->extraDataPtr) == '\r' &&
+                                       *(inHeader->extraDataPtr + 1) == '\n',
+                                   exit, err = kMalformedErr);
+
+                    inHeader->extraDataLen = 0;
+                }
+            }
+        } while (inHeader->contentLength != 0);
+    }
+
+    /* We has extra data but total length is not clear, store them to 1500 bytes buffer 
+     return when connection is disconnected by remote server */
+    // if( inHeader->dataEndedbyClose == true){
+    //   if(inHeader->contentLength == 0) { //First read body, return using data received by SocketReadHTTPHeader
+    //     inHeader->contentLength = inHeader->extraDataLen;
+    //   }else{
+    //     selectResult = select( inSock + 1, &readSet, NULL, NULL, NULL );
+    //     require_action( selectResult >= 1, exit, err = kNotReadableErr );
+
+    //     readResult = read( inSock,
+    //                       (uint8_t*)( inHeader->extraDataPtr ),
+    //                       1500 );
+    //     if( readResult  > 0 ) inHeader->contentLength = readResult;
+    //     else { err = kConnectionErr; goto exit; }
+    //   }
+    //   err = kNoErr;
+    //   goto exit;
+    // }
+
+    while (inHeader->extraDataLen < inHeader->contentLength)
+    {
+        if (!ssl_pending(ssl))
+        {
+            selectResult = select(inSock + 1, &readSet, NULL, NULL, (struct timeval *)&t);
+            require_action(selectResult >= 1, exit, err = kNotReadableErr);
+        }
+
+        if (inHeader->isCallbackSupported == true)
+        {
+            /* We has extra data, and we give these data to application by onReceivedDataCallback function */
+            readLength = inHeader->contentLength - inHeader->extraDataLen > READ_LENGTH ? READ_LENGTH : inHeader->contentLength - inHeader->extraDataLen;
+            readResult = ssl_recv(ssl,
+                                  (uint8_t *)(inHeader->extraDataPtr),
+                                  readLength);
+
+            if (readResult > 0)
+                inHeader->extraDataLen += readResult;
+            else
+            {
+                err = kConnectionErr;
+                goto exit;
+            }
+            err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
+            if (err != kNoErr)
+                goto exit;
+        }
+        else
+        {
+            /* We has extra data and we has a predefined buffer to store the total extra data return when all data has received*/
+            readResult = ssl_recv(ssl,
+                                  (uint8_t *)(inHeader->extraDataPtr + inHeader->extraDataLen),
+                                  (inHeader->contentLength - inHeader->extraDataLen));
+
+            if (readResult > 0)
+                inHeader->extraDataLen += readResult;
+            else
+            {
+                err = kConnectionErr;
+                goto exit;
+            }
+        }
+    }
+    err = kNoErr;
 
 exit:
     if (err != kNoErr)
@@ -598,14 +728,14 @@ int SocketReadHTTPSHeader(mico_ssl_t ssl, HTTPHeader_t *inHeader)
         }
         err = kNoErr;
     } /* Extra data without content length, data is ended by conntection close */
-    // else if (inHeader->extraDataLen != 0)
-    // { //Content length =0, but extra data length >0, create a memory buffer (1500)and store extra data
-    //     inHeader->dataEndedbyClose = true;
-    //     inHeader->extraDataPtr = calloc(1500, sizeof(uint8_t));
-    //     require_action(inHeader->extraDataPtr, exit, err = kNoMemoryErr);
-    //     memcpy((uint8_t *)inHeader->extraDataPtr, end, inHeader->extraDataLen);
-    //     (inHeader->onReceivedDataCallback)(inHeader, 0, (uint8_t *)inHeader->extraDataPtr, inHeader->extraDataLen, inHeader->userContext);
-    //     err = kNoErr;
+    // else if(inHeader->extraDataLen != 0){ //Content length =0, but extra data length >0, create a memory buffer (1500)and store extra data
+    //   inHeader->dataEndedbyClose = true;
+    //   inHeader->extraDataPtr = calloc(1500, sizeof(uint8_t));
+    //   require_action(inHeader->extraDataPtr, exit, err = kNoMemoryErr);
+    //   memcpy((uint8_t *)inHeader->extraDataPtr, end, inHeader->extraDataLen);
+    //   (inHeader->onReceivedDataCallback)(inHeader, 0, (uint8_t *)inHeader->extraDataPtr, inHeader->extraDataLen, inHeader->userContext);
+
+    //   err = kNoErr;
     // }
     else
         return kNoErr;
@@ -704,12 +834,14 @@ OSStatus HTTPHeaderParse(HTTPHeader_t *ioHeader)
         usrc = (const uint8_t *)src;
         ioHeader->channelID = usrc[1];
         ioHeader->contentLength = (usrc[2] << 8) | usrc[3];
+
         ioHeader->methodPtr = src;
         ioHeader->methodLen = 1;
 
         err = kNoErr;
         goto exit;
     }
+
     // Parse the start line. This will also determine if it's a request or response.
     // Requests are in the format <method> <url> <protocol>/<majorVersion>.<minorVersion>, for example:
     //
@@ -1306,8 +1438,8 @@ void PrintHTTPHeader(HTTPHeader_t *inHeader)
 {
     char temp[20];
     //(void)inHeader; // Fix warning when debug=0
-    http_utils_log("Header: \r\n%s", inHeader->buf);
-    http_utils_log("Length: %d", (int)inHeader->len);
+    //http_utils_log("Header:\n %s", inHeader->buf);
+    //http_utils_log("Length: %d", (int)inHeader->len);
     strncpy(temp, inHeader->methodPtr, 8);
     http_utils_log("Method: %s", temp);
     strncpy(temp, inHeader->urlPtr, 20);
@@ -1316,8 +1448,6 @@ void PrintHTTPHeader(HTTPHeader_t *inHeader)
     http_utils_log("Protocol: %s", temp);
     http_utils_log("Status Code: %d", inHeader->statusCode);
     http_utils_log("ChannelID: %d", inHeader->channelID);
-    //http_utils_log("Content-Length: %ld", (uint32_t)(inHeader->contentLength));
+    http_utils_log("Content length: %ld", (uint32_t)(inHeader->contentLength));
     http_utils_log("Persistent: %s", YesOrNo(inHeader->persistent));
-    http_utils_log("chunkedData: %s", YesOrNo(inHeader->chunkedData));
-    http_utils_log("extraDataLen: %d", inHeader->extraDataLen);
 }
