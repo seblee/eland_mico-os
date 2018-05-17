@@ -53,6 +53,10 @@ typedef struct _mico_Context_t
 
   /*Running status*/
   system_status_wlan_t      micoStatus;
+
+#ifdef MICO_EXTRA_AP_NUM
+  extra_ap_info_t extra_ap[MICO_EXTRA_AP_NUM];
+#endif
 } system_context_t;
 
 typedef void (*config_server_uap_configured_cb) (uint32_t id);
@@ -75,6 +79,13 @@ OSStatus MICOReadConfiguration          ( system_context_t * const inContext );
 
 system_context_t *system_context( void );
 void config_server_set_uap_cb( config_server_uap_configured_cb callback );
+
+#ifdef MICO_EXTRA_AP_NUM
+void system_network_update(system_context_t * const inContext, char *ssid);
+
+void system_network_add(system_context_t * const inContext);
+
+#endif
 
 
 #ifdef __cplusplus
