@@ -631,6 +631,7 @@ OSStatus SocketReadHTTPSBody(mico_ssl_t ssl, HTTPHeader_t *inHeader)
                 err = kConnectionErr;
                 goto exit;
             }
+            //      http_utils_log("extra_Len:%ld,total_len:%ld", inHeader->extraDataLen, inHeader->contentLength);
             err = (inHeader->onReceivedDataCallback)(inHeader, inHeader->extraDataLen - readResult, (uint8_t *)inHeader->extraDataPtr, readResult, inHeader->userContext);
             if (err != kNoErr)
                 goto exit;
@@ -1438,7 +1439,7 @@ void PrintHTTPHeader(HTTPHeader_t *inHeader)
 {
     char temp[20];
     //(void)inHeader; // Fix warning when debug=0
-    //http_utils_log("Header:\n %s", inHeader->buf);
+    http_utils_log("Header:\n %s", inHeader->buf);
     //http_utils_log("Length: %d", (int)inHeader->len);
     strncpy(temp, inHeader->methodPtr, 8);
     http_utils_log("Method: %s", temp);
