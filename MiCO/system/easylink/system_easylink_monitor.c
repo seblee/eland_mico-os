@@ -24,6 +24,7 @@
 
 #include "StringUtils.h"
 
+#define MAX_CHANNEL_DELAY_TIME 3000
 //#if (MICO_WLAN_CONFIG_MODE == CONFIG_MODE_EASYLINK) || (MICO_WLAN_CONFIG_MODE == CONFIG_MODE_EASYLINK_WITH_SOFTAP)
 
 /******************************************************
@@ -43,7 +44,7 @@ extern void mico_wlan_monitor_no_easylink(void);
  *               Variables Definitions
  ******************************************************/
 
-static uint8_t wlan_channel = 1;
+static uint8_t lock_channel = 1;
 static mico_bool_t wlan_channel_walker = MICO_TRUE;
 static uint32_t wlan_channel_walker_interval = 100;
 
@@ -58,6 +59,9 @@ static bool switch_channel_flag = true;
 
 static mico_config_source_t source = CONFIG_BY_NONE;
 static mico_connect_fail_config_t connect_fail_config = EXIT_EASYLINK;
+
+/* AP usually works at channel 1, 6 or 11, increasing the probability of switching to these channels.*/
+static const uint8_t ch_tbl[] = {1,6,11,2,3,4,5,1,6,11,7,8,9,10,1,6,11,12,13};
 
 /******************************************************
  *               Function Definitions
@@ -192,10 +196,19 @@ static void easylink_extra_data_cb( int datalen, char* data, system_context_t * 
     return;
 }
 
+void mico_easylink_monitor_set_lock_channel(uint8_t ch)
+{
+    if (ch < 1 || ch > 13)
+        return;
+    lock_channel = ch;
+}
+
 static void switch_channel_thread(mico_thread_arg_t arg)
 {
     mico_time_t current;
-
+    uint8_t wlan_channel = 0, i=0;
+    uint16_t delay_time, total_delay;
+    
     while(switch_channel_flag)
     {
         mico_time_get_time( &current );
@@ -206,12 +219,32 @@ static void switch_channel_thread(mico_thread_arg_t arg)
         }
 
         if( wlan_channel_walker == MICO_TRUE){
+            wlan_channel = ch_tbl[i++];
+            if ( i >= sizeof(ch_tbl) ) i = 0;
             mico_wlan_monitor_set_channel( wlan_channel );
+            lock_channel = wlan_channel;
             mico_easylink_monitor_delegate_channel_changed( wlan_channel );
-            wlan_channel++;
-            if ( wlan_channel >= 14 ) wlan_channel = 1;
-            mico_rtos_delay_milliseconds(wlan_channel_walker_interval);
+        } else {
+            if (lock_channel != wlan_channel) {
+                system_log("Lock channel from %d to %d", wlan_channel, lock_channel);
+                wlan_channel = lock_channel;
+                mico_wlan_monitor_set_channel( wlan_channel );
+                lock_channel = wlan_channel;
+                mico_easylink_monitor_delegate_channel_changed( wlan_channel );
+            }
         }
+        mico_rtos_delay_milliseconds(wlan_channel_walker_interval);
+        total_delay = 0;
+        do {
+            delay_time = mico_easylinK_monitor_delay_switch();
+            if (delay_time > 0) {
+                total_delay += delay_time;
+                if (total_delay > MAX_CHANNEL_DELAY_TIME) {
+                    break;
+                }
+                mico_rtos_delay_milliseconds(delay_time);
+            }
+        } while(delay_time > 0);
     }
     switch_channel_thread_handler = NULL;
     mico_rtos_delete_thread(NULL);
